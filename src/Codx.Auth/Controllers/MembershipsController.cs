@@ -425,7 +425,9 @@ namespace Codx.Auth.Controllers
                     }
                     await _db.SaveChangesAsync();
                     TempData["Success"] = "Inactive membership has been reactivated with the selected roles.";
-                    return RedirectToAction("Details", new { id = inactiveMembership.Id });
+                    if (isPlatformAdmin)
+                        return RedirectToAction("Details", new { id = inactiveMembership.Id });
+                    return RedirectToAction("ManageTenant", "MyProfile", new { id = viewModel.TenantId });
                 }
 
                 var actorIdStr = User.FindFirst("sub")?.Value;
@@ -457,7 +459,9 @@ namespace Codx.Auth.Controllers
 
                 await _db.SaveChangesAsync();
                 TempData["Success"] = "Membership created successfully.";
-                return RedirectToAction("Index", new { tenantId = viewModel.TenantId, companyId = viewModel.CompanyId });
+                if (isPlatformAdmin)
+                    return RedirectToAction("Index", new { tenantId = viewModel.TenantId, companyId = viewModel.CompanyId });
+                return RedirectToAction("ManageTenant", "MyProfile", new { id = viewModel.TenantId });
             }
 
             return View(viewModel);

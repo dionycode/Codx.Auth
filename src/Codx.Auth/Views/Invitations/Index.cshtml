@@ -4,83 +4,109 @@
     ViewData["Title"] = "Invitations";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Invitations</h2>
-    <a asp-action="Create" asp-route-tenantId="@Model.TenantId" asp-route-companyId="@Model.CompanyId"
-       class="btn btn-primary">
-        <i class="fa fa-plus"></i> Send Invitation
-    </a>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index","Home")">Home</a></li>
+        @if (User.IsInRole("PlatformAdministrator"))
+        {
+            <li class="breadcrumb-item"><a href="@Url.Action("Index","Tenants")">Tenants</a></li>
+            <li class="breadcrumb-item"><a asp-controller="Tenants" asp-action="Details" asp-route-id="@Model.TenantId">Tenant Details</a></li>
+        }
+        else
+        {
+            <li class="breadcrumb-item"><a href="@Url.Action("Index","MyProfile")">My Profile</a></li>
+            <li class="breadcrumb-item"><a asp-controller="MyProfile" asp-action="ManageTenant" asp-route-id="@Model.TenantId">Tenant</a></li>
+        }
+        <li class="breadcrumb-item active" aria-current="page">Invitations</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Invitations</h5>
+                <a asp-action="Create" asp-route-tenantId="@Model.TenantId" asp-route-companyId="@Model.CompanyId"
+                   class="btn btn-outline-success btn-sm">
+                    <i class="fa fa-plus"></i> Send Invitation
+                </a>
+            </div>
+            <div class="card-body">
+
+                @if (TempData["Success"] != null)
+                {
+                    <div class="alert alert-success">@TempData["Success"]</div>
+                }
+                @if (TempData["Error"] != null)
+                {
+                    <div class="alert alert-danger">@TempData["Error"]</div>
+                }
+
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th>Expires</th>
+                            <th>Invited</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var inv in Model.Invitations)
+                        {
+                            <tr>
+                                <td>@inv.Email</td>
+                                <td>
+                                    <span class="badge @(inv.Status == "Pending" ? "badge-warning" : inv.Status == "Accepted" ? "badge-success" : "badge-secondary")">
+                                        @inv.Status
+                                    </span>
+                                </td>
+                                <td>@inv.ExpiresAt.ToLocalTime().ToString("g")</td>
+                                <td>@inv.CreatedAt.ToLocalTime().ToString("g")</td>
+                                <td>
+                                    @if (inv.Status == "Pending")
+                                    {
+                                        <form asp-action="Revoke" asp-route-id="@inv.Id" method="post"
+                                              style="display:inline"
+                                              onsubmit="return confirm('Revoke this invitation?');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="tenantId" value="@Model.TenantId" />
+                                            <input type="hidden" name="companyId" value="@Model.CompanyId" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.Invitations.Any())
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No invitations found.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                @if (Model.TotalPages > 1)
+                {
+                    <nav>
+                        <ul class="pagination">
+                            @for (int i = 1; i <= Model.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.Page ? "active" : "")">
+                                    <a class="page-link"
+                                       asp-action="Index"
+                                       asp-route-tenantId="@Model.TenantId"
+                                       asp-route-companyId="@Model.CompanyId"
+                                       asp-route-page="@i">@i</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
+
+            </div>
+        </div>
+    </div>
 </div>
-
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success">@TempData["Success"]</div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger">@TempData["Error"]</div>
-}
-
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Email</th>
-            <th>Status</th>
-            <th>Expires</th>
-            <th>Invited</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var inv in Model.Invitations)
-        {
-            <tr>
-                <td>@inv.Email</td>
-                <td>
-                    <span class="badge @(inv.Status == "Pending" ? "badge-warning" : inv.Status == "Accepted" ? "badge-success" : "badge-secondary")">
-                        @inv.Status
-                    </span>
-                </td>
-                <td>@inv.ExpiresAt.ToLocalTime().ToString("g")</td>
-                <td>@inv.CreatedAt.ToLocalTime().ToString("g")</td>
-                <td>
-                    @if (inv.Status == "Pending")
-                    {
-                        <form asp-action="Revoke" asp-route-id="@inv.Id" method="post"
-                              style="display:inline"
-                              onsubmit="return confirm('Revoke this invitation?');">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="tenantId" value="@Model.TenantId" />
-                            <input type="hidden" name="companyId" value="@Model.CompanyId" />
-                            <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
-                        </form>
-                    }
-                </td>
-            </tr>
-        }
-        @if (!Model.Invitations.Any())
-        {
-            <tr>
-                <td colspan="5" class="text-center text-muted">No invitations found.</td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-@if (Model.TotalPages > 1)
-{
-    <nav>
-        <ul class="pagination">
-            @for (int i = 1; i <= Model.TotalPages; i++)
-            {
-                <li class="page-item @(i == Model.Page ? "active" : "")">
-                    <a class="page-link"
-                       asp-action="Index"
-                       asp-route-tenantId="@Model.TenantId"
-                       asp-route-companyId="@Model.CompanyId"
-                       asp-route-page="@i">@i</a>
-                </li>
-            }
-        </ul>
-    </nav>
-}

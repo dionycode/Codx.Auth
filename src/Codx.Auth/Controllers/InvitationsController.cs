@@ -137,7 +137,9 @@ namespace Codx.Auth.Controllers
             }
 
             TempData["Success"] = $"Invitation sent to {model.Email}.";
-            return RedirectToAction("Index", new { tenantId = model.TenantId, companyId = model.CompanyId });
+            if (User.IsInRole("PlatformAdministrator"))
+                return RedirectToAction("Index", new { tenantId = model.TenantId, companyId = model.CompanyId });
+            return RedirectToAction("ManageTenant", "MyProfile", new { id = model.TenantId });
         }
 
         // POST /invitations/{id}/revoke
@@ -158,7 +160,9 @@ namespace Codx.Auth.Controllers
             else
                 TempData["Success"] = "Invitation revoked.";
 
-            return RedirectToAction("Index", new { tenantId, companyId });
+            if (User.IsInRole("PlatformAdministrator"))
+                return RedirectToAction("Index", new { tenantId, companyId });
+            return RedirectToAction("ManageTenant", "MyProfile", new { id = tenantId });
         }
 
         // GET /invitations/GetTenantInvitationsTableData?tenantId=...&companyId=...

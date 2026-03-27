@@ -10,8 +10,16 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="@Url.Action("Index","Home")">Home</a></li>
-        <li class="breadcrumb-item"><a href="@Url.Action("Index","Tenants")">Tenants</a></li>
-        <li class="breadcrumb-item"><a asp-controller="Tenants" asp-action="Details" asp-route-id="@Model.TenantId">Tenant Details</a></li>
+        @if (User.IsInRole("PlatformAdministrator"))
+        {
+            <li class="breadcrumb-item"><a href="@Url.Action("Index","Tenants")">Tenants</a></li>
+            <li class="breadcrumb-item"><a asp-controller="Tenants" asp-action="Details" asp-route-id="@Model.TenantId">Tenant Details</a></li>
+        }
+        else
+        {
+            <li class="breadcrumb-item"><a href="@Url.Action("Index","MyProfile")">My Profile</a></li>
+            <li class="breadcrumb-item"><a asp-controller="MyProfile" asp-action="ManageTenant" asp-route-id="@Model.TenantId">Tenant</a></li>
+        }
         <li class="breadcrumb-item active" aria-current="page">Send Invitation</li>
     </ol>
 </nav>
@@ -80,8 +88,16 @@
 
                     <div class="mt-3">
                         <button type="submit" class="btn btn-primary">Send Invitation</button>
-                        <a asp-controller="Tenants" asp-action="Details" asp-route-id="@Model.TenantId"
-                           class="btn btn-secondary ml-2">Cancel</a>
+                        @if (User.IsInRole("PlatformAdministrator"))
+                        {
+                            <a asp-controller="Tenants" asp-action="Details" asp-route-id="@Model.TenantId"
+                               class="btn btn-secondary ml-2">Cancel</a>
+                        }
+                        else
+                        {
+                            <a asp-controller="MyProfile" asp-action="ManageTenant" asp-route-id="@Model.TenantId"
+                               class="btn btn-secondary ml-2">Cancel</a>
+                        }
                     </div>
                 </form>
             </div>

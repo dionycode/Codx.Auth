@@ -9,77 +9,103 @@
     int totalPages = ViewBag.TotalPages;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Memberships</h2>
-    <a asp-controller="Invitations" asp-action="Create"
-       asp-route-tenantId="@tenantId" asp-route-companyId="@companyId"
-       class="btn btn-primary">Invite User</a>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index","Home")">Home</a></li>
+        @if (User.IsInRole("PlatformAdministrator"))
+        {
+            <li class="breadcrumb-item"><a href="@Url.Action("Index","Tenants")">Tenants</a></li>
+            <li class="breadcrumb-item"><a asp-controller="Tenants" asp-action="Details" asp-route-id="@tenantId">Tenant Details</a></li>
+        }
+        else
+        {
+            <li class="breadcrumb-item"><a href="@Url.Action("Index","MyProfile")">My Profile</a></li>
+            <li class="breadcrumb-item"><a asp-controller="MyProfile" asp-action="ManageTenant" asp-route-id="@tenantId">Tenant</a></li>
+        }
+        <li class="breadcrumb-item active" aria-current="page">Memberships</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Memberships</h5>
+                <a asp-controller="Invitations" asp-action="Create"
+                   asp-route-tenantId="@tenantId" asp-route-companyId="@companyId"
+                   class="btn btn-outline-success btn-sm">Invite User</a>
+            </div>
+            <div class="card-body">
+
+                @if (TempData["Success"] != null)
+                {
+                    <div class="alert alert-success">@TempData["Success"]</div>
+                }
+
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Roles</th>
+                            <th>Status</th>
+                            <th>Joined</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var m in Model)
+                        {
+                            <tr>
+                                <td>
+                                    @(m.User?.UserName ?? m.UserId.ToString())
+                                </td>
+                                <td>
+                                    @string.Join(", ", m.MembershipRoles?.Select(r => r.RoleDefinition?.DisplayName ?? r.RoleId.ToString()) ?? Enumerable.Empty<string>())
+                                </td>
+                                <td>
+                                    <span class="badge @(m.Status == "Active" ? "badge-success" : "badge-secondary")">@m.Status</span>
+                                </td>
+                                <td>@m.JoinedAt.ToLocalTime().ToString("g")</td>
+                                <td>
+                                    <a asp-action="Details" asp-route-id="@m.Id" class="btn btn-sm btn-outline-primary">Details</a>
+                                    @if (m.Status == "Active")
+                                    {
+                                        <form asp-action="Deactivate" asp-route-id="@m.Id" method="post" style="display:inline"
+                                              onsubmit="return confirm('Deactivate this membership?');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="tenantId" value="@tenantId" />
+                                            <input type="hidden" name="companyId" value="@companyId" />
+                                            <button type="submit" class="btn btn-sm btn-outline-warning ml-1">Deactivate</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.Any())
+                        {
+                            <tr><td colspan="5" class="text-center text-muted">No memberships found.</td></tr>
+                        }
+                    </tbody>
+                </table>
+
+                @if (totalPages > 1)
+                {
+                    <nav>
+                        <ul class="pagination">
+                            @for (int i = 1; i <= totalPages; i++)
+                            {
+                                <li class="page-item @(i == page ? "active" : "")">
+                                    <a class="page-link" asp-action="Index"
+                                       asp-route-tenantId="@tenantId"
+                                       asp-route-companyId="@companyId"
+                                       asp-route-page="@i">@i</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
+
+            </div>
+        </div>
+    </div>
 </div>
-
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success">@TempData["Success"]</div>
-}
-
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>User</th>
-            <th>Roles</th>
-            <th>Status</th>
-            <th>Joined</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var m in Model)
-        {
-            <tr>
-                <td>
-                    @(m.User?.UserName ?? m.UserId.ToString())
-                </td>
-                <td>
-                    @string.Join(", ", m.MembershipRoles?.Select(r => r.RoleDefinition?.DisplayName ?? r.RoleId.ToString()) ?? Enumerable.Empty<string>())
-                </td>
-                <td>
-                    <span class="badge @(m.Status == "Active" ? "badge-success" : "badge-secondary")">@m.Status</span>
-                </td>
-                <td>@m.JoinedAt.ToLocalTime().ToString("g")</td>
-                <td>
-                    <a asp-action="Details" asp-route-id="@m.Id" class="btn btn-sm btn-outline-primary">Details</a>
-                    @if (m.Status == "Active")
-                    {
-                        <form asp-action="Deactivate" asp-route-id="@m.Id" method="post" style="display:inline"
-                              onsubmit="return confirm('Deactivate this membership?');">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="tenantId" value="@tenantId" />
-                            <input type="hidden" name="companyId" value="@companyId" />
-                            <button type="submit" class="btn btn-sm btn-outline-warning ml-1">Deactivate</button>
-                        </form>
-                    }
-                </td>
-            </tr>
-        }
-        @if (!Model.Any())
-        {
-            <tr><td colspan="5" class="text-center text-muted">No memberships found.</td></tr>
-        }
-    </tbody>
-</table>
-
-@if (totalPages > 1)
-{
-    <nav>
-        <ul class="pagination">
-            @for (int i = 1; i <= totalPages; i++)
-            {
-                <li class="page-item @(i == page ? "active" : "")">
-                    <a class="page-link" asp-action="Index"
-                       asp-route-tenantId="@tenantId"
-                       asp-route-companyId="@companyId"
-                       asp-route-page="@i">@i</a>
-                </li>
-            }
-        </ul>
-    </nav>
-}
