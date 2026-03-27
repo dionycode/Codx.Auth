@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Codx.Auth.Controllers
 {
-    [Authorize(Policy = "TenantOrCompanyAdmin")]
+    [Authorize]
     [Route("[controller]")]
     public class InvitationsController : Controller
     {
@@ -69,9 +69,16 @@ namespace Codx.Auth.Controllers
             if (!IsAuthorizedForTenant(tenantId, companyId))
                 return Forbid();
 
-            var roles = await _db.WorkspaceRoleDefinitions
-                .Where(r => r.IsActive)
-                .ToListAsync();
+            bool isPlatformAdmin = User.IsInRole("PlatformAdministrator");
+            bool isTenantOwner = !isPlatformAdmin && IsTenantOwnerForTenant(tenantId);
+
+            var rolesQuery = _db.WorkspaceRoleDefinitions.Where(r => r.IsActive);
+            if (isTenantOwner)
+                rolesQuery = rolesQuery.Where(r => r.ScopeType == "Tenant");
+            else if (companyId.HasValue && !isPlatformAdmin)
+                rolesQuery = rolesQuery.Where(r => r.ScopeType == "Company");
+
+            var roles = await rolesQuery.OrderBy(r => r.DisplayName).ToListAsync();
 
             var vm = new CreateInvitationViewModel
             {
@@ -91,11 +98,17 @@ namespace Codx.Auth.Controllers
             if (!IsAuthorizedForTenant(model.TenantId, model.CompanyId))
                 return Forbid();
 
+            bool isPlatformAdmin = User.IsInRole("PlatformAdministrator");
+            bool isTenantOwner = !isPlatformAdmin && IsTenantOwnerForTenant(model.TenantId);
+
             if (!ModelState.IsValid)
             {
-                model.AvailableRoles = await _db.WorkspaceRoleDefinitions
-                    .Where(r => r.IsActive)
-                    .ToListAsync();
+                var rolesQuery = _db.WorkspaceRoleDefinitions.Where(r => r.IsActive);
+                if (isTenantOwner)
+                    rolesQuery = rolesQuery.Where(r => r.ScopeType == "Tenant");
+                else if (model.CompanyId.HasValue && !isPlatformAdmin)
+                    rolesQuery = rolesQuery.Where(r => r.ScopeType == "Company");
+                model.AvailableRoles = await rolesQuery.OrderBy(r => r.DisplayName).ToListAsync();
                 return View(model);
             }
 
@@ -114,9 +127,12 @@ namespace Codx.Auth.Controllers
             if (!success)
             {
                 ModelState.AddModelError(string.Empty, error);
-                model.AvailableRoles = await _db.WorkspaceRoleDefinitions
-                    .Where(r => r.IsActive)
-                    .ToListAsync();
+                var rolesQueryErr = _db.WorkspaceRoleDefinitions.Where(r => r.IsActive);
+                if (isTenantOwner)
+                    rolesQueryErr = rolesQueryErr.Where(r => r.ScopeType == "Tenant");
+                else if (model.CompanyId.HasValue && !isPlatformAdmin)
+                    rolesQueryErr = rolesQueryErr.Where(r => r.ScopeType == "Company");
+                model.AvailableRoles = await rolesQueryErr.OrderBy(r => r.DisplayName).ToListAsync();
                 return View(model);
             }
 
@@ -145,10 +161,61 @@ namespace Codx.Auth.Controllers
             return RedirectToAction("Index", new { tenantId, companyId });
         }
 
+        // GET /invitations/GetTenantInvitationsTableData?tenantId=...&companyId=...
+        [HttpGet("GetTenantInvitationsTableData")]
+        public IActionResult GetTenantInvitationsTableData(Guid tenantId, Guid? companyId, string search, string sort, string order, int offset, int limit)
+        {
+            if (tenantId == Guid.Empty)
+                return BadRequest("tenantId is required.");
+
+            if (!IsAuthorizedForTenant(tenantId, companyId))
+                return Forbid();
+
+            var query = _db.Invitations
+                .Where(i => i.TenantId == tenantId && (companyId == null || i.CompanyId == companyId))
+                .Include(i => i.InvitationRoles)
+                    .ThenInclude(r => r.RoleDefinition)
+                .AsQueryable();
+
+            var total = query.Count();
+            var rows = query
+                .OrderByDescending(i => i.CreatedAt)
+                .Skip(offset)
+                .Take(limit)
+                .Select(i => new
+                {
+                    invitationId = i.Id,
+                    email = i.Email,
+                    roles = string.Join(", ", i.InvitationRoles.Select(r => r.RoleDefinition.DisplayName)),
+                    scope = i.CompanyId == null ? "Tenant" : "Company",
+                    status = i.Status,
+                    expiresAt = i.ExpiresAt,
+                    createdAt = i.CreatedAt
+                })
+                .ToList();
+
+            return Json(new { total, rows });
+        }
+
+        // Returns true when the current user holds an active TENANT_OWNER membership for the tenant.
+        private bool IsTenantOwnerForTenant(Guid tenantId)
+        {
+            var userIdStr = User.FindFirst("sub")?.Value;
+            if (!Guid.TryParse(userIdStr, out var userId)) return false;
+            return _db.UserMemberships.Any(m =>
+                m.UserId == userId
+                && m.TenantId == tenantId
+                && m.CompanyId == null
+                && m.Status == "Active"
+                && m.MembershipRoles.Any(r => r.Status == "Active" && r.RoleDefinition.Code == "TENANT_OWNER"));
+        }
+
         // Returns true when the current user is allowed to manage the given tenant/company scope.
         private bool IsAuthorizedForTenant(Guid tenantId, Guid? companyId)
         {
             if (User.IsInRole("PlatformAdministrator")) return true;
+
+            if (IsTenantOwnerForTenant(tenantId)) return true;
 
             var workspaceRole = User.FindFirst("workspace_role")?.Value;
 

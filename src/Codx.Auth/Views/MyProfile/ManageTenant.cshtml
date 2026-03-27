@@ -21,7 +21,8 @@
                     <div class="nav nav-tabs" id="nav-tab" role="tablist">
                         <a class="nav-item nav-link active" id="nav-details-tab" data-toggle="tab" href="#nav-details" role="tab" aria-controls="nav-details" aria-selected="true">Details</a>
                         <a class="nav-item nav-link" id="nav-companies-tab" data-toggle="tab" href="#nav-companies" role="tab" aria-controls="nav-companies" aria-selected="false">Companies</a>
-                        <a class="nav-item nav-link" id="nav-members-tab" data-toggle="tab" href="#nav-members" role="tab" aria-controls="nav-members" aria-selected="false">Members</a>
+                        <a class="nav-item nav-link" id="nav-memberships-tab" data-toggle="tab" href="#nav-memberships" role="tab" aria-controls="nav-memberships" aria-selected="false">Memberships</a>
+                        <a class="nav-item nav-link" id="nav-invitations-tab" data-toggle="tab" href="#nav-invitations" role="tab" aria-controls="nav-invitations" aria-selected="false">Invitations</a>
                     </div>
                 </nav>
             </div>
@@ -84,29 +85,58 @@
                         </table>
 
                     </div>
-                    <div class="tab-pane fade" id="nav-members" role="tabpanel" aria-labelledby="nav-members-tab">
-                        <a asp-action="Create" asp-controller="Memberships" asp-route-tenantId="@Model.Id" class="btn btn-outline-primary">Add Member</a>
+                    <div class="tab-pane fade" id="nav-memberships" role="tabpanel" aria-labelledby="nav-memberships-tab">
+                        <a asp-action="Create" asp-controller="Memberships" asp-route-tenantId="@Model.Id" class="btn btn-outline-primary">Add Membership</a>
                         <br />  <br />
                         <table class="table table-bordered"
-                               id="managerTable"
+                               id="tenantMembershipsTable"
                                data-toggle="table"
-                               data-query-params="tenantMemberTableParams"
+                               data-query-params="tenantMembershipsTableParams"
                                data-pagination="true"
                                data-side-pagination="server"
                                data-page-size="5"
                                data-page-list="[5,10,25,50,100,200,All]"
-                               data-ajax="tenantMemberAjaxRequest">
+                               data-ajax="tenantMembershipsAjaxRequest">
 
                             <thead>
                                 <tr>
                                     <th data-field="userEmail">Email</th>
                                     <th data-field="roles">Roles</th>
-                                    <th data-field="membershipId" data-width="120" data-formatter="tenantMemberRowActionButtons"></th>
+                                    <th data-field="membershipId" data-width="120" data-formatter="tenantMembershipActionButtons"></th>
                                 </tr>
                             </thead>
 
                         </table>
 
+                    </div>
+
+                    @*-- Invitations Tab --*@
+                    <div class="tab-pane fade" id="nav-invitations" role="tabpanel" aria-labelledby="nav-invitations-tab">
+                        <div class="mt-2 mb-2">
+                            <a asp-controller="Invitations" asp-action="Create" asp-route-tenantId="@Model.Id"
+                               class="btn btn-outline-success">Send Invitation</a>
+                        </div>
+                        <table class="table table-bordered"
+                               id="tenantInvitationsTable"
+                               data-toggle="table"
+                               data-query-params="tenantInvitationsTableParams"
+                               data-pagination="true"
+                               data-side-pagination="server"
+                               data-page-size="10"
+                               data-page-list="[10,25,50,100]"
+                               data-ajax="tenantInvitationsAjaxRequest">
+                            <thead>
+                                <tr>
+                                    <th data-field="email">Email</th>
+                                    <th data-field="roles">Roles</th>
+                                    <th data-field="scope">Scope</th>
+                                    <th data-field="status" data-formatter="invitationStatusFormatter">Status</th>
+                                    <th data-field="expiresAt" data-formatter="invitationDateFormatter">Expires</th>
+                                    <th data-field="createdAt" data-formatter="invitationDateFormatter">Invited</th>
+                                    <th data-field="invitationId" data-width="100" data-formatter="tenantInvitationActionButtons"></th>
+                                </tr>
+                            </thead>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -138,18 +168,45 @@
                 '<a class="btn btn-outline-danger btn-sm" href="/MyProfile/ManageTenantCompanyDelete/' + row.id +'" title="Delete this record"><i class="fa fa-trash-alt"></i></a>'
         }
 
-        function tenantMemberAjaxRequest(params) {
+        function tenantMembershipsAjaxRequest(params) {
             var url = '@Url.Action("GetManageTenantMembersTableData", "MyProfile")';
             $.get(url + '?' + $.param(params.data)).then(function (res) {
                 params.success(res)
             })
         };
-        function tenantMemberTableParams(params) {
+        function tenantMembershipsTableParams(params) {
             params.tenantid = modelid;
             return params
         }
-        function tenantMemberRowActionButtons(value, row) {
+        function tenantMembershipActionButtons(value, row) {
             return '<a class="btn btn-outline-info btn-sm" href="/Memberships/' + row.membershipId + '" title="View membership"><i class="fa fa-file-alt"></i></a>'
+        }
+
+        function tenantInvitationsAjaxRequest(params) {
+            var url = '@Url.Action("GetTenantInvitationsTableData", "Invitations")';
+            $.get(url + '?' + $.param(params.data)).then(function (res) {
+                params.success(res)
+            })
+        };
+        function tenantInvitationsTableParams(params) {
+            params.tenantId = modelid;
+            return params
+        }
+        function invitationStatusFormatter(value) {
+            var cls = value === 'Pending' ? 'badge-warning' : value === 'Accepted' ? 'badge-success' : 'badge-secondary';
+            return '<span class="badge ' + cls + '">' + value + '</span>';
+        }
+        function invitationDateFormatter(value) {
+            if (!value) return '';
+            return new Date(value).toLocaleDateString();
+        }
+        function tenantInvitationActionButtons(value, row) {
+            if (row.status !== 'Pending') return '';
+            return '<form method="post" action="/Invitations/' + value + '/revoke" style="display:inline" onsubmit="return confirm(\'Revoke this invitation?\')">'
+                + '<input type="hidden" name="__RequestVerificationToken" value="' + $('input[name=__RequestVerificationToken]').first().val() + '" />'
+                + '<input type="hidden" name="tenantId" value="' + modelid + '" />'
+                + '<button type="submit" class="btn btn-sm btn-outline-danger" title="Revoke invitation"><i class="fa fa-ban"></i></button>'
+                + '</form>';
         }
 
     </script>
