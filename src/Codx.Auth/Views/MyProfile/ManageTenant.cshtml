@@ -21,7 +21,7 @@
                     <div class="nav nav-tabs" id="nav-tab" role="tablist">
                         <a class="nav-item nav-link active" id="nav-details-tab" data-toggle="tab" href="#nav-details" role="tab" aria-controls="nav-details" aria-selected="true">Details</a>
                         <a class="nav-item nav-link" id="nav-companies-tab" data-toggle="tab" href="#nav-companies" role="tab" aria-controls="nav-companies" aria-selected="false">Companies</a>
-                        <a class="nav-item nav-link" id="nav-managers-tab" data-toggle="tab" href="#nav-managers" role="tab" aria-controls="nav-managers" aria-selected="false">Managers</a>
+                        <a class="nav-item nav-link" id="nav-members-tab" data-toggle="tab" href="#nav-members" role="tab" aria-controls="nav-members" aria-selected="false">Members</a>
                     </div>
                 </nav>
             </div>
@@ -84,23 +84,24 @@
                         </table>
 
                     </div>
-                    <div class="tab-pane fade" id="nav-managers" role="tabpanel" aria-labelledby="nav-managers-tab">
-                        <a asp-action="Add" asp-controller="TenantManagers" asp-route-tenantid="@Model.Id" class="btn btn-outline-primary">Add</a>
+                    <div class="tab-pane fade" id="nav-members" role="tabpanel" aria-labelledby="nav-members-tab">
+                        <a asp-action="Create" asp-controller="Memberships" asp-route-tenantId="@Model.Id" class="btn btn-outline-primary">Add Member</a>
                         <br />  <br />
                         <table class="table table-bordered"
                                id="managerTable"
                                data-toggle="table"
-                               data-query-params="tenantManagerTableParams"
+                               data-query-params="tenantMemberTableParams"
                                data-pagination="true"
                                data-side-pagination="server"
                                data-page-size="5"
                                data-page-list="[5,10,25,50,100,200,All]"
-                               data-ajax="tenantManagerAjaxRequest">
+                               data-ajax="tenantMemberAjaxRequest">
 
                             <thead>
                                 <tr>
-                                    <th data-field="userEmail">Name</th>
-                                    <th data-field="userId" data-width="150" data-formatter="tenantManagerRowActionButtons"></th>
+                                    <th data-field="userEmail">Email</th>
+                                    <th data-field="roles">Roles</th>
+                                    <th data-field="membershipId" data-width="120" data-formatter="tenantMemberRowActionButtons"></th>
                                 </tr>
                             </thead>
 
@@ -137,19 +138,18 @@
                 '<a class="btn btn-outline-danger btn-sm" href="/MyProfile/ManageTenantCompanyDelete/' + row.id +'" title="Delete this record"><i class="fa fa-trash-alt"></i></a>'
         }
 
-        function tenantManagerAjaxRequest(params) {
-            var url = '@Url.Action("GetManageTenantManagersTableData", "MyProfile")';
+        function tenantMemberAjaxRequest(params) {
+            var url = '@Url.Action("GetManageTenantMembersTableData", "MyProfile")';
             $.get(url + '?' + $.param(params.data)).then(function (res) {
                 params.success(res)
             })
         };
-        function tenantManagerTableParams(params) {
+        function tenantMemberTableParams(params) {
             params.tenantid = modelid;
             return params
         }
-        function tenantManagerRowActionButtons(index, row) {
-            return '<a class="btn btn-outline-info btn-sm" href="/Users/Details/' + row.userId + '" title="Show record details"><i class="fa fa-file-alt"></i></a> ' +
-                '<a class="btn btn-outline-danger btn-sm" href="/TenantManagers/Delete?tenantid='+modelid+'&userid=' + row.userId +'" title="Delete this record"><i class="fa fa-trash-alt"></i></a>'
+        function tenantMemberRowActionButtons(value, row) {
+            return '<a class="btn btn-outline-info btn-sm" href="/Memberships/' + row.membershipId + '" title="View membership"><i class="fa fa-file-alt"></i></a>'
         }
 
     </script>

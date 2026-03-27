@@ -1,0 +1,93 @@
+@using Codx.Auth.Data.Entities.Enterprise
+@model UserMembership
+
+@{
+    ViewData["Title"] = "Membership Details";
+    var availableRoles = ViewBag.AvailableRoles as List<WorkspaceRoleDefinition>;
+}
+
+<h2>Membership — @(Model.User?.UserName ?? Model.UserId.ToString())</h2>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+<dl class="row">
+    <dt class="col-sm-3">Tenant</dt>
+    <dd class="col-sm-9">@(Model.Tenant?.Name ?? Model.TenantId.ToString())</dd>
+    @if (Model.Company != null)
+    {
+        <dt class="col-sm-3">Company</dt>
+        <dd class="col-sm-9">@Model.Company.Name</dd>
+    }
+    <dt class="col-sm-3">Status</dt>
+    <dd class="col-sm-9">
+        <span class="badge badge-@(Model.Status == "Active" ? "success" : "secondary")">@Model.Status</span>
+    </dd>
+    <dt class="col-sm-3">Joined</dt>
+    <dd class="col-sm-9">@Model.JoinedAt.ToLocalTime().ToString("g")</dd>
+</dl>
+
+<div class="mb-3">
+    @if (Model.Status == "Active")
+    {
+        <form asp-action="Deactivate" asp-route-id="@Model.Id" method="post" style="display:inline"
+              onsubmit="return confirm('Deactivate this membership?');">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-danger btn-sm">Deactivate</button>
+        </form>
+    }
+    else
+    {
+        <form asp-action="Reactivate" asp-route-id="@Model.Id" method="post" style="display:inline"
+              onsubmit="return confirm('Reactivate this membership?');">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-success btn-sm">Reactivate</button>
+        </form>
+    }
+</div>
+
+<hr />
+
+<h4>Workspace Roles</h4>
+
+<table class="table table-sm">
+    <thead><tr><th>Role</th><th>Scope</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var r in Model.MembershipRoles ?? Enumerable.Empty<UserMembershipRole>())
+        {
+            <tr>
+                <td>@(r.RoleDefinition?.DisplayName ?? r.RoleId.ToString())</td>
+                <td>@r.RoleDefinition?.ScopeType</td>
+                <td>
+                    <form asp-action="RevokeRole"
+                          asp-route-id="@Model.Id"
+                          asp-route-roleId="@r.Id"
+                          method="post" style="display:inline"
+                          onsubmit="return confirm('Remove this role?');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (availableRoles?.Any() == true)
+{
+    <form asp-action="AddRole" asp-route-id="@Model.Id" method="post" class="form-inline mt-2">
+        @Html.AntiForgeryToken()
+        <select name="roleId" class="form-control mr-2">
+            @foreach (var role in availableRoles)
+            {
+                <option value="@role.Id">@role.DisplayName (@role.ScopeType)</option>
+            }
+        </select>
+        <button type="submit" class="btn btn-outline-primary">Add Role</button>
+    </form>
+}
+
+<a asp-action="Index" asp-route-tenantId="@Model.TenantId" asp-route-companyId="@Model.CompanyId"
+   class="btn btn-secondary mt-3">Back to Memberships</a>

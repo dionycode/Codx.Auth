@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Codx.Auth.Data.Contexts;
 using Codx.Auth.Data.Entities.Enterprise;
 using Codx.Auth.Extensions;
@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace Codx.Auth.Controllers
 {
-    [Authorize(Policy = "IdentityServerAdmin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public class CompaniesController : Controller
     {
         private readonly UserDbContext _context;

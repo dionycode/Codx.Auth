@@ -1,0 +1,72 @@
+@model Codx.Auth.ViewModels.Applications.ApplicationDetailsViewModel
+
+@{
+    ViewData["Title"] = Model.Application.DisplayName;
+}
+
+<h2>@Model.Application.DisplayName</h2>
+<p class="text-muted"><code>@Model.Application.Id</code></p>
+
+@if (!string.IsNullOrEmpty(Model.Application.Description))
+{
+    <p>@Model.Application.Description</p>
+}
+
+<dl class="row">
+    <dt class="col-sm-3">Allow Self-Registration</dt>
+    <dd class="col-sm-9">@(Model.Application.AllowSelfRegistration ? "Yes" : "No")</dd>
+    <dt class="col-sm-3">Active</dt>
+    <dd class="col-sm-9">@(Model.Application.IsActive ? "Yes" : "No")</dd>
+    <dt class="col-sm-3">Created</dt>
+    <dd class="col-sm-9">@Model.Application.CreatedAt.ToLocalTime().ToString("g")</dd>
+</dl>
+
+<hr />
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h4>Roles</h4>
+    <a asp-action="AddRole" asp-route-id="@Model.Application.Id" class="btn btn-sm btn-primary">Add Role</a>
+</div>
+
+<table class="table table-sm">
+    <thead>
+        <tr><th>Name</th><th>Description</th><th>Active</th><th></th></tr>
+    </thead>
+    <tbody>
+        @foreach (var role in Model.Application.Roles ?? Enumerable.Empty<Codx.Auth.Data.Entities.Enterprise.EnterpriseApplicationRole>())
+        {
+            <tr>
+                <td>@role.Name</td>
+                <td>@role.Description</td>
+                <td>@(role.IsActive ? "Yes" : "No")</td>
+                <td>
+                    @if (role.IsActive)
+                    {
+                        <form asp-action="DeactivateRole"
+                              asp-route-id="@Model.Application.Id"
+                              asp-route-roleId="@role.Id"
+                              method="post" style="display:inline"
+                              onsubmit="return confirm('Deactivate this role?');">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-warning">Deactivate</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.LinkedClientIds.Any())
+{
+    <hr />
+    <h4>Linked Clients</h4>
+    <ul>
+        @foreach (var clientId in Model.LinkedClientIds)
+        {
+            <li><code>@clientId</code></li>
+        }
+    </ul>
+}
+
+<a asp-action="Index" class="btn btn-secondary mt-3">Back to Applications</a>

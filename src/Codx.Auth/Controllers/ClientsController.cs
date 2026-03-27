@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Codx.Auth.Data.Contexts;
 using Codx.Auth.ViewModels;
 using Duende.IdentityServer.EntityFramework.Entities;
@@ -11,15 +11,18 @@ using System.Threading.Tasks;
 
 namespace Codx.Auth.Controllers
 {
-    [Authorize(Policy = "IdentityServerAdmin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public class ClientsController : Controller
     {
         protected readonly IdentityServerDbContext _dbContext;
         protected readonly IMapper _mapper;
-        public ClientsController(IdentityServerDbContext dbContext, IMapper mapper)
+        protected readonly UserDbContext _userDb;
+
+        public ClientsController(IdentityServerDbContext dbContext, IMapper mapper, UserDbContext userDb)
         {
             _dbContext = dbContext;
             _mapper = mapper;
+            _userDb = userDb;
         }
         public IActionResult Index()
         {
@@ -55,8 +58,14 @@ namespace Codx.Auth.Controllers
         }
 
         [HttpGet]
-        public IActionResult Add()
+        public async Task<IActionResult> Add()
         {
+            var apps = await _userDb.EnterpriseApplications
+                .Where(a => a.IsActive)
+                .OrderBy(a => a.DisplayName)
+                .Select(a => new { a.Id, a.DisplayName })
+                .ToListAsync();
+            ViewBag.Applications = apps;
             return View();
         }
 
@@ -79,29 +88,66 @@ namespace Codx.Auth.Controllers
 
                 if (result > 0)
                 {
-                    return RedirectToAction(nameof(Details), new { id=record.Id });
+                    if (!string.IsNullOrEmpty(viewModel.ApplicationId))
+                    {
+                        _dbContext.ClientProperties.Add(new ClientProperty
+                        {
+                            ClientId = record.Id,
+                            Key = "application_id",
+                            Value = viewModel.ApplicationId
+                        });
+                    }
+                    _dbContext.ClientProperties.Add(new ClientProperty
+                    {
+                        ClientId = record.Id,
+                        Key = "allow_self_registration",
+                        Value = viewModel.AllowSelfRegistration ? "true" : "false"
+                    });
+                    await _dbContext.SaveChangesAsync().ConfigureAwait(false);
+
+                    return RedirectToAction(nameof(Details), new { id = record.Id });
                 }
 
-
                 ModelState.AddModelError("", "Failed");
-
             }
 
+            var apps = await _userDb.EnterpriseApplications
+                .Where(a => a.IsActive)
+                .OrderBy(a => a.DisplayName)
+                .Select(a => new { a.Id, a.DisplayName })
+                .ToListAsync();
+            ViewBag.Applications = apps;
             return View(viewModel);
         }
 
         // Edit Client
+        [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
             var record = await _dbContext.Clients.FirstOrDefaultAsync(u => u.Id == id);
 
             var viewmodel = _mapper.Map<ClientEditViewModel>(record);
 
+            // Load existing ClientProperties
+            var props = await _dbContext.ClientProperties
+                .Where(p => p.ClientId == id)
+                .ToListAsync();
+            viewmodel.ApplicationId = props.FirstOrDefault(p => p.Key == "application_id")?.Value;
+            viewmodel.AllowSelfRegistration = props.FirstOrDefault(p => p.Key == "allow_self_registration")?.Value == "true";
+
+            var apps = await _userDb.EnterpriseApplications
+                .Where(a => a.IsActive)
+                .OrderBy(a => a.DisplayName)
+                .Select(a => new { a.Id, a.DisplayName })
+                .ToListAsync();
+            ViewBag.Applications = apps;
+
             return View(viewmodel);
         }
 
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(ClientEditViewModel viewmodel)
         {
             var isRecordFound = await _dbContext.Clients.AnyAsync(u => u.Id == viewmodel.Id);
@@ -115,11 +161,43 @@ namespace Codx.Auth.Controllers
 
                 if (result > 0)
                 {
+                    // Upsert application_id property
+                    var existingAppId = await _dbContext.ClientProperties
+                        .FirstOrDefaultAsync(p => p.ClientId == viewmodel.Id && p.Key == "application_id");
+                    if (!string.IsNullOrEmpty(viewmodel.ApplicationId))
+                    {
+                        if (existingAppId == null)
+                            _dbContext.ClientProperties.Add(new ClientProperty { ClientId = viewmodel.Id, Key = "application_id", Value = viewmodel.ApplicationId });
+                        else
+                            existingAppId.Value = viewmodel.ApplicationId;
+                    }
+                    else if (existingAppId != null)
+                    {
+                        _dbContext.ClientProperties.Remove(existingAppId);
+                    }
+
+                    // Upsert allow_self_registration property
+                    var existingSelfReg = await _dbContext.ClientProperties
+                        .FirstOrDefaultAsync(p => p.ClientId == viewmodel.Id && p.Key == "allow_self_registration");
+                    if (existingSelfReg == null)
+                        _dbContext.ClientProperties.Add(new ClientProperty { ClientId = viewmodel.Id, Key = "allow_self_registration", Value = viewmodel.AllowSelfRegistration ? "true" : "false" });
+                    else
+                        existingSelfReg.Value = viewmodel.AllowSelfRegistration ? "true" : "false";
+
+                    await _dbContext.SaveChangesAsync().ConfigureAwait(false);
+
                     return RedirectToAction(nameof(Details), new { id = record.Id });
                 }
 
                 ModelState.AddModelError("", "Failed");
             }
+
+            var apps = await _userDb.EnterpriseApplications
+                .Where(a => a.IsActive)
+                .OrderBy(a => a.DisplayName)
+                .Select(a => new { a.Id, a.DisplayName })
+                .ToListAsync();
+            ViewBag.Applications = apps;
 
             return View(viewmodel);
         }

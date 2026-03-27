@@ -7,6 +7,7 @@ using Codx.Auth.Extensions;
 using Codx.Auth.Mappings;
 using Codx.Auth.Services;
 using Codx.Auth.Services.Interfaces;
+using Codx.Auth.Infrastructure;
 using Codx.Auth.Infrastructure.Theming;
 using Duende.IdentityServer;
 using Microsoft.AspNetCore.Builder;
@@ -82,11 +83,19 @@ namespace Codx.Auth
                     options.ConfigureDbContext = builder => builder.UseSqlServer(connectionString, sql => sql.MigrationsAssembly(migrationsAssembly));
                 })
                 .AddAspNetIdentity<ApplicationUser>()
-                .AddProfileService<CustomProfileService>();
+                .AddProfileService<CustomProfileService>()
+                .AddCustomTokenRequestValidator<WorkspaceContextValidator>();
 
             services.AddDbContext<IdentityServerDbContext>();
 
             services.AddScoped<ITenantResolver, TenantResolver>();
+            services.AddScoped<IMembershipResolver, MembershipResolver>();
+            services.AddScoped<IWorkspaceContextAccessor, WorkspaceContextAccessor>();
+            services.AddScoped<IWorkspaceSessionStore, EfWorkspaceSessionStore>();
+            services.AddScoped<IAuditService, DbAuditService>();
+            services.AddScoped<IInvitationService, InvitationService>();
+            services.AddHostedService<InvitationExpiryService>();
+            services.AddProblemDetails();
 
             // Configure external authentication providers
             var externalAuthConfig = new ExternalAuthConfiguration();
@@ -145,12 +154,45 @@ namespace Codx.Auth
 
             services.AddAuthorization(options =>
             {
-                options.AddPolicy("IdentityServerAdmin", policy => policy.RequireRole("Administrator"));
+                options.AddPolicy("IdentityServerAdmin", policy => policy.RequireRole("PlatformAdministrator"));
                 options.AddPolicy(IdentityServerConstants.LocalApi.PolicyName, policy =>
                 {
                     policy.AddAuthenticationSchemes(IdentityServerConstants.LocalApi.AuthenticationScheme);
                     policy.RequireAuthenticatedUser();
                 });
+
+                // Multi-tenant workspace authorization policies
+                options.AddPolicy("PlatformAdmin", policy =>
+                    policy.RequireRole("PlatformAdministrator"));
+
+                options.AddPolicy("TenantContext", policy =>
+                    policy.RequireAuthenticatedUser()
+                          .RequireClaim("tenant_id"));
+
+                options.AddPolicy("CompanyContext", policy =>
+                    policy.RequireAuthenticatedUser()
+                          .RequireClaim("company_id"));
+
+                options.AddPolicy("TenantAdminRole", policy =>
+                    policy.RequireAuthenticatedUser()
+                          .RequireClaim("tenant_id")
+                          .RequireClaim("workspace_role", "TenantAdmin", "PlatformAdministrator"));
+
+                options.AddPolicy("CompanyAdminRole", policy =>
+                    policy.RequireAuthenticatedUser()
+                          .RequireClaim("company_id")
+                          .RequireClaim("workspace_role", "CompanyAdmin", "TenantAdmin", "PlatformAdministrator"));
+
+                options.AddPolicy("TenantManagerRole", policy =>
+                    policy.RequireAuthenticatedUser()
+                          .RequireClaim("tenant_id")
+                          .RequireClaim("workspace_role", "TenantManager", "TenantAdmin", "PlatformAdministrator"));
+
+                // Allows TenantAdmin, CompanyAdmin, and PlatformAdministrator.
+                // Tenant/company scope enforcement is performed within each controller action.
+                options.AddPolicy("TenantOrCompanyAdmin", policy =>
+                    policy.RequireAuthenticatedUser()
+                          .RequireClaim("workspace_role", "CompanyAdmin", "TenantAdmin", "PlatformAdministrator"));
             });
 
             // Add CORS services

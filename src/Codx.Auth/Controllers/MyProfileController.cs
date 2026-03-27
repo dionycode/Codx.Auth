@@ -132,23 +132,32 @@ namespace Codx.Auth.Controllers
         public JsonResult GetMyTenantsTableData(string search, string sort, string order, int offset, int limit)
         {
             var userId = User.GetUserId();
-            var query = _userdbcontext.TenantManagers.Include(o => o.Manager).Include(o => o.Tenant).Where(o => o.UserId == userId);
+            var tenantAdminRoles = new[] { "TENANT_OWNER", "TENANT_ADMIN", "TENANT_MANAGER" };
 
-            var data = query.OrderBy(o => o.Tenant.Name).Skip(offset).Take(limit).ToList();
-            var viewModel = data.Select(tenant => new TenantManagerDetailsViewModel
+            // A tenant is "manageable" when the user holds a tenant-scoped membership
+            // (CompanyId == null) with at least one active role whose code is a tenant admin role.
+            var query = _userdbcontext.UserMemberships
+                .Where(m => m.UserId == userId
+                            && m.CompanyId == null
+                            && m.Status == "Active"
+                            && m.MembershipRoles.Any(r => r.Status == "Active"
+                            && tenantAdminRoles.Contains(r.RoleDefinition.Code)));
+
+            var total = query.Count();
+            var data = query
+                .Include(m => m.Tenant)
+                .OrderBy(m => m.Tenant.Name)
+                .Skip(offset)
+                .Take(limit)
+                .ToList();
+
+            var rows = data.Select(m => new
             {
-                UserId = tenant.UserId,
-                TenantId = tenant.TenantId,
-                TenantName = tenant.Tenant.Name,
-                UserEmail = tenant.Manager.Email,
-                UserName = tenant.Manager.UserName
+                tenantId = m.TenantId,
+                tenantName = m.Tenant.Name
             }).ToList();
 
-            return Json(new
-            {
-                total = query.Count(),
-                rows = viewModel
-            });
+            return Json(new { total, rows });
         }
 
         [HttpGet]
@@ -178,9 +187,16 @@ namespace Codx.Auth.Controllers
         public IActionResult ManageTenant(Guid id)
         {
             var userId = User.GetUserId();
-            var tenantManager = _userdbcontext.TenantManagers.FirstOrDefault(o => o.UserId == userId && o.TenantId == id);
+            var tenantAdminRoles = new[] { "TENANT_OWNER", "TENANT_ADMIN", "TENANT_MANAGER" };
+            var hasMembership = _userdbcontext.UserMemberships
+                .Any(m => m.UserId == userId
+                          && m.TenantId == id
+                          && m.CompanyId == null
+                          && m.Status == "Active"
+                          && m.MembershipRoles.Any(r => r.Status == "Active"
+                              && tenantAdminRoles.Contains(r.RoleDefinition.Code)));
 
-            if (tenantManager == null)
+            if (!hasMembership)
             {
                 return RedirectToAction("Index");
             }
@@ -195,9 +211,16 @@ namespace Codx.Auth.Controllers
         public async Task<IActionResult> ManageTenantEdit(Guid id)
         {
             var userId = User.GetUserId();
-            var tenantManager = _userdbcontext.TenantManagers.FirstOrDefault(o => o.UserId == userId && o.TenantId == id);
+            var tenantAdminRoles = new[] { "TENANT_OWNER", "TENANT_ADMIN", "TENANT_MANAGER" };
+            var hasMembership = _userdbcontext.UserMemberships
+                .Any(m => m.UserId == userId
+                          && m.TenantId == id
+                          && m.CompanyId == null
+                          && m.Status == "Active"
+                          && m.MembershipRoles.Any(r => r.Status == "Active"
+                              && tenantAdminRoles.Contains(r.RoleDefinition.Code)));
 
-            if (tenantManager == null)
+            if (!hasMembership)
             {
                 return RedirectToAction("Index");
             }
@@ -494,18 +517,35 @@ namespace Codx.Auth.Controllers
         }
 
         [HttpGet]
-        public JsonResult GetManageTenantManagersTableData(Guid tenantid, string search, string sort, string order, int offset, int limit)
+        public JsonResult GetManageTenantMembersTableData(Guid tenantid, string search, string sort, string order, int offset, int limit)
         {
-            var query = _userdbcontext.TenantManagers.Include(o => o.Manager).Where(o => o.TenantId == tenantid);
+            var tenantAdminRoles = new[] { "TENANT_OWNER", "TENANT_ADMIN", "TENANT_MANAGER" };
+            var query = _userdbcontext.UserMemberships
+                .Where(m => m.TenantId == tenantid
+                            && m.CompanyId == null
+                            && m.Status == "Active"
+                            && m.MembershipRoles.Any(r => r.Status == "Active"
+                                && tenantAdminRoles.Contains(r.RoleDefinition.Code)))
+                .Include(m => m.User)
+                .Include(m => m.MembershipRoles)
+                    .ThenInclude(r => r.RoleDefinition);
 
-            var data = query.OrderBy(o => o.Manager.UserName).Skip(offset).Take(limit).ToList();
-            var viewModel = _mapper.Map<List<TenantManagerDetailsViewModel>>(data);
+            var total = query.Count();
+            var data = query.OrderBy(m => m.User.UserName).Skip(offset).Take(limit).ToList();
 
-            return Json(new
+            var rows = data.Select(m => new
             {
-                total = query.Count(),
-                rows = viewModel
-            });
+                membershipId = m.Id,
+                userId = m.UserId,
+                userEmail = m.User.Email,
+                userName = m.User.UserName,
+                roles = string.Join(", ", m.MembershipRoles
+                    .Where(r => r.Status == "Active")
+                    .Select(r => r.RoleDefinition.DisplayName)),
+                joinedAt = m.JoinedAt
+            }).ToList();
+
+            return Json(new { total, rows });
         }
 
 

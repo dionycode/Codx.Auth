@@ -13,12 +13,18 @@ namespace Codx.Auth.ViewModels
 
     public class ClientAddViewModel : BaseClientViewModel
     {
-
+        /// <summary>Optional EnterpriseApplication.Id to link this client to an application.</summary>
+        public string ApplicationId { get; set; }
+        /// <summary>Writes allow_self_registration=true/false to ClientProperties.</summary>
+        public bool AllowSelfRegistration { get; set; }
     }
 
     public class ClientEditViewModel : BaseClientViewModel
     {
-      
+        /// <summary>Optional EnterpriseApplication.Id linked to this client.</summary>
+        public string ApplicationId { get; set; }
+        /// <summary>allow_self_registration ClientProperty value.</summary>
+        public bool AllowSelfRegistration { get; set; }
     }
 
     public class BaseClientViewModel

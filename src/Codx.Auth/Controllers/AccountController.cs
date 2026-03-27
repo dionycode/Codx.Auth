@@ -18,6 +18,8 @@ using Duende.IdentityServer.Stores;
 using IdentityModel;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -39,6 +41,9 @@ namespace Codx.Auth.Controllers
         private readonly IAuthenticationSchemeProvider _schemeProvider;
         private readonly IEventService _events;
         private readonly AuthenticationSettings _authSettings;
+        private readonly IInvitationService _invitationService;
+        private readonly IDataProtectionProvider _dataProtection;
+        private readonly IAuditService _auditService;
 
         public AccountController(
             UserManager<ApplicationUser> userManager,
@@ -49,7 +54,10 @@ namespace Codx.Auth.Controllers
             IClientStore clientStore,
             IAuthenticationSchemeProvider schemeProvider,
             IEventService events,
-            IOptions<AuthenticationSettings> authSettings)
+            IOptions<AuthenticationSettings> authSettings,
+            IInvitationService invitationService,
+            IDataProtectionProvider dataProtection,
+            IAuditService auditService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -60,23 +68,171 @@ namespace Codx.Auth.Controllers
             _schemeProvider = schemeProvider;
             _events = events;
             _authSettings = authSettings.Value;
+            _invitationService = invitationService;
+            _dataProtection = dataProtection;
+            _auditService = auditService;
         }
 
-        [HttpGet]
-        public IActionResult Register(string returnUrl)
+        // ─── Invitation landing ──────────────────────────────────────────────
+
+        /// <summary>
+        /// Public landing page for an invitation link. Renders a minimal form that
+        /// auto-POSTs the raw token to POST /invite/consume so the token never
+        /// appears in any redirect URL after this point.
+        /// </summary>
+        [HttpGet("/invite/{rawToken}")]
+        [AllowAnonymous]
+        public IActionResult Invite(string rawToken)
         {
-            var model = new RegisterViewModel
+            Response.Headers["Referrer-Policy"] = "no-referrer";
+            return View("InviteLanding", new InviteLandingViewModel { RawToken = rawToken });
+        }
+
+        /// <summary>
+        /// Validates the raw invite token from the form body, issues a short-lived
+        /// HttpOnly __invite_id cookie, then redirects to /account/register.
+        /// The raw token must not appear in any URL after this point.
+        /// </summary>
+        [HttpPost("/invite/consume")]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ConsumeInvite([FromForm] string rawToken, string returnUrl)
+        {
+            var validation = await _invitationService.ValidateInviteTokenAsync(rawToken);
+            if (!validation.IsValid)
+                return View("InvalidInvitation");
+
+            var protector = _dataProtection.CreateProtector("invite-cookie");
+            var cookieValue = protector.Protect(validation.InvitationId.ToString());
+            Response.Cookies.Append("__invite_id", cookieValue, new CookieOptions
             {
-                ReturnUrl = returnUrl
-            };
+                HttpOnly = true,
+                SameSite = SameSiteMode.Lax,
+                Secure = Request.IsHttps,
+                Expires = DateTimeOffset.UtcNow.AddMinutes(30),
+                IsEssential = true
+            });
+
+            return RedirectToAction("Register", new { returnUrl });
+        }
+
+        // ─── Register ────────────────────────────────────────────────────────
+
+        [HttpGet]
+        public async Task<IActionResult> Register(string returnUrl)
+        {
+            var model = new RegisterViewModel { ReturnUrl = returnUrl };
+
+            if (Request.Cookies.TryGetValue("__invite_id", out var inviteCookie))
+            {
+                // Invitation-driven flow: pre-fill email from invitation
+                try
+                {
+                    var protector = _dataProtection.CreateProtector("invite-cookie");
+                    var invitationId = Guid.Parse(protector.Unprotect(inviteCookie));
+                    var invitation = await _invitationService.GetByIdAsync(invitationId);
+                    if (invitation != null && invitation.Status == "Pending" && invitation.ExpiresAt > DateTime.UtcNow)
+                    {
+                        // If user already exists with this email, send them to login instead
+                        var existing = await _userManager.FindByEmailAsync(invitation.Email);
+                        if (existing != null)
+                        {
+                            TempData["InviteInfo"] = "An account with this email already exists. Please sign in to accept your invitation.";
+                            return RedirectToAction("Login", new { returnUrl });
+                        }
+                        model.Email = invitation.Email;
+                        model.IsInviteMode = true;
+                    }
+                    else
+                    {
+                        Response.Cookies.Delete("__invite_id");
+                        return View("InvalidInvitation");
+                    }
+                }
+                catch
+                {
+                    Response.Cookies.Delete("__invite_id");
+                }
+            }
+            else if (!await IsSelfRegistrationAllowedAsync(returnUrl))
+            {
+                return View("InvitationOnly");
+            }
+
             return View(model);
         }
 
         [HttpPost]
         public async Task<IActionResult> Register(RegisterViewModel model)
         {
-            if (ModelState.IsValid)
+            if (Request.Cookies.TryGetValue("__invite_id", out var inviteCookie))
             {
+                // ── Invitation-based registration ──────────────────────────
+                Guid invitationId;
+                try
+                {
+                    var protector = _dataProtection.CreateProtector("invite-cookie");
+                    invitationId = Guid.Parse(protector.Unprotect(inviteCookie));
+                }
+                catch
+                {
+                    return View("InvalidInvitation");
+                }
+
+                // Re-validate invitation before proceeding
+                var invitation = await _invitationService.GetByIdAsync(invitationId);
+                if (invitation == null || invitation.Status != "Pending" || invitation.ExpiresAt <= DateTime.UtcNow)
+                {
+                    Response.Cookies.Delete("__invite_id");
+                    return View("InvalidInvitation");
+                }
+
+                // Force email from invitation (cannot be overridden by user)
+                model.Email = invitation.Email;
+                model.IsInviteMode = true;
+
+                if (!ModelState.IsValid)
+                    return View(model);
+
+                // Create the user account without tenant bootstrap
+                var newUser = new ApplicationUser
+                {
+                    UserName = invitation.Email,
+                    Email = invitation.Email,
+                    GivenName = model.FirstName,
+                    MiddleName = model.MiddleName,
+                    FamilyName = model.LastName
+                };
+                var createResult = await _userManager.CreateAsync(newUser, model.Password);
+                if (!createResult.Succeeded)
+                {
+                    foreach (var error in createResult.Errors)
+                        ModelState.AddModelError(string.Empty, error.Description);
+                    return View(model);
+                }
+
+                var (accepted, acceptError) = await _invitationService.AcceptInvitationAsync(invitationId, newUser.Id);
+                if (!accepted)
+                {
+                    await _userManager.DeleteAsync(newUser);
+                    ModelState.AddModelError(string.Empty, acceptError);
+                    return View(model);
+                }
+
+                Response.Cookies.Delete("__invite_id");
+                await _auditService.LogAsync("RegistrationCompleted",
+                    userId: newUser.Id, actorUserId: newUser.Id,
+                    tenantId: invitation.TenantId, companyId: invitation.CompanyId);
+
+                TempData["RegistrationSuccess"] = "Your account has been created. You can now sign in.";
+                return RedirectToAction("Login", new { returnUrl = model.ReturnUrl });
+            }
+            else
+            {
+                // ── Self-registration flow ─────────────────────────────────
+                if (!ModelState.IsValid)
+                    return View(model);
+
                 var registerRequest = new RegisterRequest
                 {
                     Email = model.Email,
@@ -86,57 +242,48 @@ namespace Codx.Auth.Controllers
                     Password = model.Password,
                     ConfirmPassword = model.ConfirmPassword,
                 };
-                
+
                 var (result, user) = await _accountService.RegisterAsync(registerRequest);
 
                 if (result.Success)
                 {
-                    // Check if email verification is required
                     if (_authSettings.RequireEmailVerification)
                     {
-                        // Generate email confirmation token
                         var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                        
-                        // Create callback URL for email confirmation
                         var callbackUrl = Url.Action(
-                            "ConfirmEmail",
-                            "Account",
-                            new { userId = user.Id, token = token, returnUrl = model.ReturnUrl },
+                            "ConfirmEmail", "Account",
+                            new { userId = user.Id, token, returnUrl = model.ReturnUrl },
                             protocol: Request.Scheme);
-                        
-                        // Send verification email
-                        var (emailSuccess, emailMessage) = await _accountService.SendEmailVerificationAsync(user, callbackUrl);
-                        
+                        var (emailSuccess, _) = await _accountService.SendEmailVerificationAsync(user, callbackUrl);
                         if (emailSuccess)
-                        {
-                            // Redirect to email verification pending page
                             return RedirectToAction("EmailVerificationSent", new { email = user.Email });
-                        }
-                        else
-                        {
-                            // If email sending fails, still allow the user but show a warning
-                            ModelState.AddModelError(string.Empty, "Account created but failed to send verification email. Please contact support.");
-                        }
+                        ModelState.AddModelError(string.Empty, "Account created but failed to send verification email. Please contact support.");
                     }
                     else
                     {
-                        // Email verification not required - auto-confirm email and redirect to login
                         var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                         await _userManager.ConfirmEmailAsync(user, token);
-                        
-                        // Redirect to login page with success message
                         TempData["RegistrationSuccess"] = "Your account has been created successfully. You can now sign in.";
                         return RedirectToAction("Login", new { returnUrl = model.ReturnUrl });
                     }
                 }
 
                 foreach (var error in result.Errors)
-                {
                     ModelState.AddModelError(string.Empty, error);
-                }
             }
 
             return View(model);
+        }
+
+        private async Task<bool> IsSelfRegistrationAllowedAsync(string returnUrl)
+        {
+            if (string.IsNullOrEmpty(returnUrl)) return true;
+            var authRequest = await _interaction.GetAuthorizationContextAsync(returnUrl);
+            if (authRequest == null) return true;
+            var client = await _clientStore.FindClientByIdAsync(authRequest.Client.ClientId);
+            if (client?.Properties == null) return true;
+            return !client.Properties.TryGetValue("allow_self_registration", out var value)
+                || !string.Equals(value, "false", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
