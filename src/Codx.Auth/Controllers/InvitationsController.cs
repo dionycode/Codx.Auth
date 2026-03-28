@@ -73,10 +73,10 @@ namespace Codx.Auth.Controllers
             bool isTenantOwner = !isPlatformAdmin && IsTenantOwnerForTenant(tenantId);
 
             var rolesQuery = _db.WorkspaceRoleDefinitions.Where(r => r.IsActive);
-            if (isTenantOwner)
-                rolesQuery = rolesQuery.Where(r => r.ScopeType == "Tenant");
-            else if (companyId.HasValue && !isPlatformAdmin)
+            if (companyId.HasValue)
                 rolesQuery = rolesQuery.Where(r => r.ScopeType == "Company");
+            else
+                rolesQuery = rolesQuery.Where(r => r.ScopeType == "Tenant");
 
             var roles = await rolesQuery.OrderBy(r => r.DisplayName).ToListAsync();
 
@@ -104,10 +104,10 @@ namespace Codx.Auth.Controllers
             if (!ModelState.IsValid)
             {
                 var rolesQuery = _db.WorkspaceRoleDefinitions.Where(r => r.IsActive);
-                if (isTenantOwner)
-                    rolesQuery = rolesQuery.Where(r => r.ScopeType == "Tenant");
-                else if (model.CompanyId.HasValue && !isPlatformAdmin)
+                if (model.CompanyId.HasValue)
                     rolesQuery = rolesQuery.Where(r => r.ScopeType == "Company");
+                else
+                    rolesQuery = rolesQuery.Where(r => r.ScopeType == "Tenant");
                 model.AvailableRoles = await rolesQuery.OrderBy(r => r.DisplayName).ToListAsync();
                 return View(model);
             }
@@ -128,10 +128,10 @@ namespace Codx.Auth.Controllers
             {
                 ModelState.AddModelError(string.Empty, error);
                 var rolesQueryErr = _db.WorkspaceRoleDefinitions.Where(r => r.IsActive);
-                if (isTenantOwner)
-                    rolesQueryErr = rolesQueryErr.Where(r => r.ScopeType == "Tenant");
-                else if (model.CompanyId.HasValue && !isPlatformAdmin)
+                if (model.CompanyId.HasValue)
                     rolesQueryErr = rolesQueryErr.Where(r => r.ScopeType == "Company");
+                else
+                    rolesQueryErr = rolesQueryErr.Where(r => r.ScopeType == "Tenant");
                 model.AvailableRoles = await rolesQueryErr.OrderBy(r => r.DisplayName).ToListAsync();
                 return View(model);
             }
@@ -139,6 +139,8 @@ namespace Codx.Auth.Controllers
             TempData["Success"] = $"Invitation sent to {model.Email}.";
             if (User.IsInRole("PlatformAdministrator"))
                 return RedirectToAction("Index", new { tenantId = model.TenantId, companyId = model.CompanyId });
+            if (model.CompanyId.HasValue)
+                return RedirectToAction("ManageTenantCompanyDetails", "MyProfile", new { id = model.CompanyId });
             return RedirectToAction("ManageTenant", "MyProfile", new { id = model.TenantId });
         }
 
@@ -162,6 +164,8 @@ namespace Codx.Auth.Controllers
 
             if (User.IsInRole("PlatformAdministrator"))
                 return RedirectToAction("Index", new { tenantId, companyId });
+            if (companyId.HasValue)
+                return RedirectToAction("ManageTenantCompanyDetails", "MyProfile", new { id = companyId });
             return RedirectToAction("ManageTenant", "MyProfile", new { id = tenantId });
         }
 

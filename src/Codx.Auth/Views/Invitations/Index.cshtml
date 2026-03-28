@@ -11,11 +11,19 @@
         {
             <li class="breadcrumb-item"><a href="@Url.Action("Index","Tenants")">Tenants</a></li>
             <li class="breadcrumb-item"><a asp-controller="Tenants" asp-action="Details" asp-route-id="@Model.TenantId">Tenant Details</a></li>
+            @if (Model.CompanyId.HasValue)
+            {
+                <li class="breadcrumb-item"><a asp-controller="Companies" asp-action="Details" asp-route-id="@Model.CompanyId">Company Details</a></li>
+            }
         }
         else
         {
             <li class="breadcrumb-item"><a href="@Url.Action("Index","MyProfile")">My Profile</a></li>
             <li class="breadcrumb-item"><a asp-controller="MyProfile" asp-action="ManageTenant" asp-route-id="@Model.TenantId">Tenant</a></li>
+            @if (Model.CompanyId.HasValue)
+            {
+                <li class="breadcrumb-item"><a asp-controller="MyProfile" asp-action="ManageTenantCompanyDetails" asp-route-id="@Model.CompanyId">Company Details</a></li>
+            }
         }
         <li class="breadcrumb-item active" aria-current="page">Invitations</li>
     </ol>

@@ -227,6 +227,40 @@ namespace Codx.Auth.Controllers
             return Json(new { total, rows });
         }
 
+        // GET /memberships/GetCompanyMembershipsTableData?tenantId=...&companyId=...
+        [HttpGet("GetCompanyMembershipsTableData")]
+        public IActionResult GetCompanyMembershipsTableData(Guid tenantId, Guid companyId, string search, string sort, string order, int offset, int limit)
+        {
+            if (tenantId == Guid.Empty)
+                return BadRequest("tenantId is required.");
+            if (companyId == Guid.Empty)
+                return BadRequest("companyId is required.");
+
+            if (!IsAuthorizedForTenant(tenantId, companyId))
+                return Forbid();
+
+            var query = _db.UserMemberships
+                .Where(m => m.TenantId == tenantId && m.CompanyId == companyId && m.Status == "Active")
+                .Include(m => m.User)
+                .Include(m => m.MembershipRoles)
+                    .ThenInclude(r => r.RoleDefinition);
+
+            var total = query.Count();
+            var data = query.OrderBy(m => m.User.Email).Skip(offset).Take(limit).ToList();
+            var rows = data.Select(m => new
+            {
+                membershipId = m.Id,
+                userEmail = m.User.Email,
+                userName = m.User.UserName,
+                roles = string.Join(", ", m.MembershipRoles
+                    .Where(r => r.Status == "Active")
+                    .Select(r => r.RoleDefinition.DisplayName)),
+                joinedAt = m.JoinedAt
+            }).ToList();
+
+            return Json(new { total, rows });
+        }
+
         // GET /memberships/GetTenantOwnersTableData?tenantId=...
         [HttpGet("GetTenantOwnersTableData")]
         public IActionResult GetTenantOwnersTableData(Guid tenantId, string search, string sort, string order, int offset, int limit)
@@ -262,9 +296,9 @@ namespace Codx.Auth.Controllers
             return Json(new { total, rows });
         }
 
-        // GET /memberships/create?tenantId=...&tenantScopeOnly=true
+        // GET /memberships/create?tenantId=...&companyId=...&tenantScopeOnly=true
         [HttpGet("create")]
-        public async Task<IActionResult> Create(Guid tenantId, bool tenantScopeOnly = false)
+        public async Task<IActionResult> Create(Guid tenantId, Guid? companyId, bool tenantScopeOnly = false)
         {
             if (tenantId == Guid.Empty)
                 return BadRequest("tenantId is required.");
@@ -272,14 +306,16 @@ namespace Codx.Auth.Controllers
             bool isPlatformAdmin = User.IsInRole("PlatformAdministrator");
             bool isTenantOwner = !isPlatformAdmin && IsTenantOwnerForTenant(tenantId);
 
-            if (!isPlatformAdmin && !isTenantOwner)
+            if (!isPlatformAdmin && !isTenantOwner && !IsAuthorizedForTenant(tenantId, companyId))
                 return Forbid();
 
             // TenantOwners may only grant tenant-scoped roles; always force the flag for them.
-            if (isTenantOwner) tenantScopeOnly = true;
+            if (isTenantOwner && !companyId.HasValue) tenantScopeOnly = true;
 
             var rolesQuery = _db.WorkspaceRoleDefinitions.Where(r => r.IsActive);
-            if (isTenantOwner)
+            if (companyId.HasValue)
+                rolesQuery = rolesQuery.Where(r => r.ScopeType == "Company");
+            else if (isTenantOwner)
                 rolesQuery = rolesQuery.Where(r => r.Code == "TENANT_ADMIN" || r.Code == "TENANT_MANAGER");
             else if (tenantScopeOnly)
                 rolesQuery = rolesQuery.Where(r => r.ScopeType == "Tenant");
@@ -290,7 +326,7 @@ namespace Codx.Auth.Controllers
 
             ViewBag.AvailableRoles = availableRoles;
 
-            return View(new MembershipCreateViewModel { TenantId = tenantId, TenantScopeOnly = tenantScopeOnly });
+            return View(new MembershipCreateViewModel { TenantId = tenantId, CompanyId = companyId, TenantScopeOnly = tenantScopeOnly });
         }
 
         // POST /memberships/create
@@ -301,13 +337,15 @@ namespace Codx.Auth.Controllers
             bool isPlatformAdmin = User.IsInRole("PlatformAdministrator");
             bool isTenantOwner = !isPlatformAdmin && IsTenantOwnerForTenant(viewModel.TenantId);
 
-            if (!isPlatformAdmin && !isTenantOwner)
+            if (!isPlatformAdmin && !isTenantOwner && !IsAuthorizedForTenant(viewModel.TenantId, viewModel.CompanyId))
                 return Forbid();
 
-            if (isTenantOwner) viewModel.TenantScopeOnly = true;
+            if (isTenantOwner && !viewModel.CompanyId.HasValue) viewModel.TenantScopeOnly = true;
 
             var rolesQuery = _db.WorkspaceRoleDefinitions.Where(r => r.IsActive);
-            if (isTenantOwner)
+            if (viewModel.CompanyId.HasValue)
+                rolesQuery = rolesQuery.Where(r => r.ScopeType == "Company");
+            else if (isTenantOwner)
                 rolesQuery = rolesQuery.Where(r => r.Code == "TENANT_ADMIN" || r.Code == "TENANT_MANAGER");
             else if (viewModel.TenantScopeOnly)
                 rolesQuery = rolesQuery.Where(r => r.ScopeType == "Tenant");
@@ -427,6 +465,8 @@ namespace Codx.Auth.Controllers
                     TempData["Success"] = "Inactive membership has been reactivated with the selected roles.";
                     if (isPlatformAdmin)
                         return RedirectToAction("Details", new { id = inactiveMembership.Id });
+                    if (viewModel.CompanyId.HasValue)
+                        return RedirectToAction("ManageTenantCompanyDetails", "MyProfile", new { id = viewModel.CompanyId });
                     return RedirectToAction("ManageTenant", "MyProfile", new { id = viewModel.TenantId });
                 }
 
@@ -461,6 +501,8 @@ namespace Codx.Auth.Controllers
                 TempData["Success"] = "Membership created successfully.";
                 if (isPlatformAdmin)
                     return RedirectToAction("Index", new { tenantId = viewModel.TenantId, companyId = viewModel.CompanyId });
+                if (viewModel.CompanyId.HasValue)
+                    return RedirectToAction("ManageTenantCompanyDetails", "MyProfile", new { id = viewModel.CompanyId });
                 return RedirectToAction("ManageTenant", "MyProfile", new { id = viewModel.TenantId });
             }
 

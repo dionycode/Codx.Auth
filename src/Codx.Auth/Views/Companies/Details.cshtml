@@ -21,7 +21,6 @@
                 <nav>
                     <div class="nav nav-tabs" id="nav-tab" role="tablist">
                         <a class="nav-item nav-link active" id="nav-details-tab" data-toggle="tab" href="#nav-details" role="tab" aria-controls="nav-details" aria-selected="true">Details</a>
-                        <a class="nav-item nav-link" id="nav-users-tab" data-toggle="tab" href="#nav-users" role="tab" aria-controls="nav-users" aria-selected="false">Users</a>
                         <a class="nav-item nav-link" id="nav-memberships-tab" data-toggle="tab" href="#nav-memberships" role="tab" aria-controls="nav-memberships" aria-selected="false">Memberships</a>
                         <a class="nav-item nav-link" id="nav-invitations-tab" data-toggle="tab" href="#nav-invitations" role="tab" aria-controls="nav-invitations" aria-selected="false">Invitations</a>
                     </div>
@@ -64,52 +63,61 @@
                             </div>
                         </div>
                     </div>
-                    <div class="tab-pane fade" id="nav-users" role="tabpanel" aria-labelledby="nav-users-tab">
-                        <a asp-action="Add" asp-controller="CompanyUsers" asp-route-companyid="@Model.Id" class="btn btn-outline-primary">Add</a>
-                        <br />  <br />
-                        <table class="table table-bordered"
-                               id="companyUserTable"
-                               data-toggle="table"
-                               data-query-params="companyUserTableParams"
-                               data-pagination="true"
-                               data-side-pagination="server"
-                               data-page-size="5"
-                               data-page-list="[5,10,25,50,100,200,All]"
-                               data-ajax="companyUserAjaxRequest">
-
-                            <thead>
-                                <tr>
-                                    <th data-field="userEmail">Email</th>
-                                    <th data-field="userId" data-width="150" data-formatter="companyUserRowActionButtons"></th>
-                                </tr>
-                            </thead>
-
-                        </table>
-
-                    </div>
 
                     @*-- Memberships Tab --*@
                     <div class="tab-pane fade" id="nav-memberships" role="tabpanel" aria-labelledby="nav-memberships-tab">
                         <div class="mt-2 mb-2">
-                            <a asp-controller="Memberships" asp-action="Index"
+                            <a asp-controller="Memberships" asp-action="Create"
                                asp-route-tenantId="@Model.TenantId" asp-route-companyId="@Model.Id"
-                               class="btn btn-outline-primary">View All Memberships</a>
-                            <a asp-controller="Invitations" asp-action="Create"
-                               asp-route-tenantId="@Model.TenantId" asp-route-companyId="@Model.Id"
-                               class="btn btn-primary ml-2">Invite User</a>
+                               class="btn btn-outline-success">Add Membership</a>
                         </div>
+                        <table class="table table-bordered"
+                               id="companyMembershipsTable"
+                               data-toggle="table"
+                               data-query-params="companyMembershipsTableParams"
+                               data-pagination="true"
+                               data-side-pagination="server"
+                               data-page-size="10"
+                               data-page-list="[10,25,50,100]"
+                               data-ajax="companyMembershipsAjaxRequest">
+                            <thead>
+                                <tr>
+                                    <th data-field="userEmail">User</th>
+                                    <th data-field="roles">Roles</th>
+                                    <th data-field="joinedAt" data-formatter="companyMembershipJoinedAtFormatter">Joined</th>
+                                    <th data-field="membershipId" data-width="80" data-formatter="companyMembershipActionButtons"></th>
+                                </tr>
+                            </thead>
+                        </table>
                     </div>
 
                     @*-- Invitations Tab --*@
                     <div class="tab-pane fade" id="nav-invitations" role="tabpanel" aria-labelledby="nav-invitations-tab">
                         <div class="mt-2 mb-2">
-                            <a asp-controller="Invitations" asp-action="Index"
-                               asp-route-tenantId="@Model.TenantId" asp-route-companyId="@Model.Id"
-                               class="btn btn-outline-primary">View All Invitations</a>
                             <a asp-controller="Invitations" asp-action="Create"
                                asp-route-tenantId="@Model.TenantId" asp-route-companyId="@Model.Id"
-                               class="btn btn-primary ml-2">Send Invitation</a>
+                               class="btn btn-outline-success">Send Invitation</a>
                         </div>
+                        <table class="table table-bordered"
+                               id="companyInvitationsTable"
+                               data-toggle="table"
+                               data-query-params="companyInvitationsTableParams"
+                               data-pagination="true"
+                               data-side-pagination="server"
+                               data-page-size="10"
+                               data-page-list="[10,25,50,100]"
+                               data-ajax="companyInvitationsAjaxRequest">
+                            <thead>
+                                <tr>
+                                    <th data-field="email">Email</th>
+                                    <th data-field="roles">Roles</th>
+                                    <th data-field="status" data-formatter="companyInvitationStatusFormatter">Status</th>
+                                    <th data-field="expiresAt" data-formatter="companyInvitationDateFormatter">Expires</th>
+                                    <th data-field="createdAt" data-formatter="companyInvitationDateFormatter">Invited</th>
+                                    <th data-field="invitationId" data-width="100" data-formatter="companyInvitationActionButtons"></th>
+                                </tr>
+                            </thead>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -121,24 +129,57 @@
 {
     <script>
         var modelid = '@Model.Id';
+        var tenantid = '@Model.TenantId';
     </script>
 
     <script>
-        function companyUserAjaxRequest(params) {
-            var url = '@Url.Action("GetCompanyUsersTableData", "CompanyUsers")';
+        function companyMembershipsAjaxRequest(params) {
+            var url = '@Url.Action("GetCompanyMembershipsTableData", "Memberships")';
             $.get(url + '?' + $.param(params.data)).then(function (res) {
                 params.success(res)
             })
         };
-        function companyUserTableParams(params) {
-            params.companyid = modelid;
+        function companyMembershipsTableParams(params) {
+            params.tenantId = tenantid;
+            params.companyId = modelid;
             return params
         }
-        function companyUserRowActionButtons(index, row) {
-            return '<a class="btn btn-outline-info btn-sm" href="/Users/Details/' + row.userId + '" title="Show record details"><i class="fa fa-file-alt"></i></a> ' +
-                '<a class="btn btn-outline-danger btn-sm" href="/CompanyUsers/Delete?companyid='+modelid+'&userid=' + row.userId +'" title="Delete this record"><i class="fa fa-trash-alt"></i></a>'
+        function companyMembershipJoinedAtFormatter(value) {
+            if (!value) return '';
+            return new Date(value).toLocaleDateString();
+        }
+        function companyMembershipActionButtons(value, row) {
+            return '<a class="btn btn-outline-info btn-sm" href="/Memberships/' + value + '" title="View membership"><i class="fa fa-file-alt"></i></a>'
         }
 
+        function companyInvitationsAjaxRequest(params) {
+            var url = '@Url.Action("GetTenantInvitationsTableData", "Invitations")';
+            $.get(url + '?' + $.param(params.data)).then(function (res) {
+                params.success(res)
+            })
+        };
+        function companyInvitationsTableParams(params) {
+            params.tenantId = tenantid;
+            params.companyId = modelid;
+            return params
+        }
+        function companyInvitationStatusFormatter(value) {
+            var cls = value === 'Pending' ? 'badge-warning' : value === 'Accepted' ? 'badge-success' : 'badge-secondary';
+            return '<span class="badge ' + cls + '">' + value + '</span>';
+        }
+        function companyInvitationDateFormatter(value) {
+            if (!value) return '';
+            return new Date(value).toLocaleDateString();
+        }
+        function companyInvitationActionButtons(value, row) {
+            if (row.status !== 'Pending') return '';
+            return '<form method="post" action="/Invitations/' + value + '/revoke" style="display:inline" onsubmit="return confirm(\'Revoke this invitation?\')">' +
+                '<input type="hidden" name="__RequestVerificationToken" value="' + $('input[name=__RequestVerificationToken]').first().val() + '" />' +
+                '<input type="hidden" name="tenantId" value="' + tenantid + '" />' +
+                '<input type="hidden" name="companyId" value="' + modelid + '" />' +
+                '<button type="submit" class="btn btn-sm btn-outline-danger" title="Revoke invitation"><i class="fa fa-ban"></i></button>' +
+                '</form>';
+        }
     </script>
 
 }
