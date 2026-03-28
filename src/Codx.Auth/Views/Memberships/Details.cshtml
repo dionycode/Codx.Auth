@@ -25,7 +25,7 @@
 </nav>
 
 <div class="row">
-    <div class="col-lg-8">
+    <div class="col-lg-12">
         <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">Membership — @(Model.User?.UserName ?? Model.UserId.ToString())</h5>
@@ -113,10 +113,18 @@
                     </form>
                 }
 
-                <div class="mt-3">
-                    <a asp-action="Index" asp-route-tenantId="@Model.TenantId" asp-route-companyId="@Model.CompanyId"
-                       class="btn btn-secondary">Back to Memberships</a>
-                </div>
+                <!-- <div class="mt-3">
+                    @if (User.IsInRole("PlatformAdministrator"))
+                    {
+                        <a asp-action="Index" asp-route-tenantId="@Model.TenantId" asp-route-companyId="@Model.CompanyId"
+                           class="btn btn-secondary">Back to Memberships</a>
+                    }
+                    else
+                    {
+                        <a asp-controller="MyProfile" asp-action="ManageTenant" asp-route-id="@Model.TenantId"
+                           class="btn btn-secondary">Back to Tenant</a>
+                    }
+                </div> -->
 
             </div>
         </div>
