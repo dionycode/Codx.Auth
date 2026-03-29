@@ -4,7 +4,12 @@
     ViewData["Title"] = "My Profile";
 }
 
-
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index","Home")">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">My Profile</li>
+    </ol>
+</nav>
 
 <div class="row">
     <div class="col-lg-12">

@@ -4,6 +4,15 @@
     ViewData["Title"] = "Add Role";
 }
 
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index","Home")">Home</a></li>
+        <li class="breadcrumb-item"><a href="@Url.Action("Index","Applications")">Applications</a></li>
+        <li class="breadcrumb-item"><a href="@Url.Action("Details","Applications", new { id=Model.ApplicationId})">Application</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Add Role</li>
+    </ol>
+</nav>
+
 <h2>Add Role — @Model.ApplicationName</h2>
 
 <div asp-validation-summary="All" class="text-danger"></div>
