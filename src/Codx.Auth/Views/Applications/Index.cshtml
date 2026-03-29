@@ -14,49 +14,59 @@
     </ol>
 </nav>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Applications</h2>
-    <a asp-action="Add" class="btn btn-primary"><i class="fa fa-plus"></i> Add Application</a>
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header">
+                <a asp-action="Add" class="btn btn-outline-primary">Add</a>
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered"
+                       id="applicationTable"
+                       data-toggle="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Display Name</th>
+                            <th>Self-Registration</th>
+                            <th>Active</th>
+                            <th data-width="150"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var app in Model)
+                        {
+                            <tr>
+                                <td><code>@app.Id</code></td>
+                                <td>@app.DisplayName</td>
+                                <td>@(app.AllowSelfRegistration ? "Yes" : "No")</td>
+                                <td>@(app.IsActive ? "Yes" : "No")</td>
+                                <td>
+                                    <a href="/Applications/@app.Id" class="btn btn-outline-info btn-sm" title="Show record details"><i class="fa fa-file-alt"></i></a>
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.Any())
+                        {
+                            <tr><td colspan="5" class="text-center text-muted">No applications registered.</td></tr>
+                        }
+                    </tbody>
+                </table>
+
+                @if (totalPages > 1)
+                {
+                    <nav>
+                        <ul class="pagination">
+                            @for (int i = 1; i <= totalPages; i++)
+                            {
+                                <li class="page-item @(i == page ? "active" : "")">
+                                    <a class="page-link" asp-action="Index" asp-route-page="@i">@i</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
+            </div>
+        </div>
+    </div>
 </div>
-
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Display Name</th>
-            <th>Self-Registration</th>
-            <th>Active</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var app in Model)
-        {
-            <tr>
-                <td><code>@app.Id</code></td>
-                <td>@app.DisplayName</td>
-                <td>@(app.AllowSelfRegistration ? "Yes" : "No")</td>
-                <td>@(app.IsActive ? "Yes" : "No")</td>
-                <td><a asp-action="Details" asp-route-id="@app.Id" class="btn btn-sm btn-outline-primary">Details</a></td>
-            </tr>
-        }
-        @if (!Model.Any())
-        {
-            <tr><td colspan="5" class="text-center text-muted">No applications registered.</td></tr>
-        }
-    </tbody>
-</table>
-
-@if (totalPages > 1)
-{
-    <nav>
-        <ul class="pagination">
-            @for (int i = 1; i <= totalPages; i++)
-            {
-                <li class="page-item @(i == page ? "active" : "")">
-                    <a class="page-link" asp-action="Index" asp-route-page="@i">@i</a>
-                </li>
-            }
-        </ul>
-    </nav>
-}

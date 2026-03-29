@@ -12,69 +12,113 @@
     </ol>
 </nav>
 
-<h2>@Model.Application.DisplayName</h2>
-<p class="text-muted"><code>@Model.Application.Id</code></p>
-
-@if (!string.IsNullOrEmpty(Model.Application.Description))
-{
-    <p>@Model.Application.Description</p>
-}
-
-<dl class="row">
-    <dt class="col-sm-3">Allow Self-Registration</dt>
-    <dd class="col-sm-9">@(Model.Application.AllowSelfRegistration ? "Yes" : "No")</dd>
-    <dt class="col-sm-3">Active</dt>
-    <dd class="col-sm-9">@(Model.Application.IsActive ? "Yes" : "No")</dd>
-    <dt class="col-sm-3">Created</dt>
-    <dd class="col-sm-9">@Model.Application.CreatedAt.ToLocalTime().ToString("g")</dd>
-</dl>
-
-<hr />
-
-<div class="d-flex justify-content-between align-items-center mb-2">
-    <h4>Roles</h4>
-    <a asp-action="AddRole" asp-route-id="@Model.Application.Id" class="btn btn-sm btn-primary">Add Role</a>
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header">
+                <nav>
+                    <div class="nav nav-tabs" id="nav-tab" role="tablist">
+                        <a class="nav-item nav-link active" id="nav-details-tab" data-toggle="tab" href="#nav-details" role="tab" aria-controls="nav-details" aria-selected="true">Details</a>
+                        <a class="nav-item nav-link" id="nav-roles-tab" data-toggle="tab" href="#nav-roles" role="tab" aria-controls="nav-roles" aria-selected="false">Roles</a>
+                        <a class="nav-item nav-link" id="nav-clients-tab" data-toggle="tab" href="#nav-clients" role="tab" aria-controls="nav-clients" aria-selected="false">Linked Clients</a>
+                    </div>
+                </nav>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="nav-tabContent">
+                    <div class="tab-pane fade show active" id="nav-details" role="tabpanel" aria-labelledby="nav-details-tab">
+                        <br />
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label>ID</label>
+                                    <input value="@Model.Application.Id" class="form-control" readonly />
+                                </div>
+                                <div class="form-group">
+                                    <label>Display Name</label>
+                                    <input value="@Model.Application.DisplayName" class="form-control" readonly />
+                                </div>
+                                <div class="form-group">
+                                    <label>Description</label>
+                                    <input value="@Model.Application.Description" class="form-control" readonly />
+                                </div>
+                                <div class="form-group">
+                                    <label>Allow Self-Registration</label>
+                                    <input value="@(Model.Application.AllowSelfRegistration ? "Yes" : "No")" class="form-control" readonly />
+                                </div>
+                                <div class="form-group">
+                                    <label>Active</label>
+                                    <input value="@(Model.Application.IsActive ? "Yes" : "No")" class="form-control" readonly />
+                                </div>
+                                <div class="form-group">
+                                    <label>Created</label>
+                                    <input value="@Model.Application.CreatedAt.ToLocalTime().ToString("g")" class="form-control" readonly />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="nav-roles" role="tabpanel" aria-labelledby="nav-roles-tab">
+                        <a asp-action="AddRole" asp-route-id="@Model.Application.Id" class="btn btn-outline-primary">Add Role</a>
+                        <br />  <br />
+                        <table class="table table-bordered"
+                               id="rolesTable"
+                               data-toggle="table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Description</th>
+                                    <th>Active</th>
+                                    <th data-width="150"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var role in Model.Application.Roles ?? Enumerable.Empty<Codx.Auth.Data.Entities.Enterprise.EnterpriseApplicationRole>())
+                                {
+                                    <tr>
+                                        <td>@role.Name</td>
+                                        <td>@role.Description</td>
+                                        <td>@(role.IsActive ? "Yes" : "No")</td>
+                                        <td>
+                                            @if (role.IsActive)
+                                            {
+                                                <form asp-action="DeactivateRole"
+                                                      asp-route-id="@Model.Application.Id"
+                                                      asp-route-roleId="@role.Id"
+                                                      method="post" style="display:inline"
+                                                      onsubmit="return confirm('Deactivate this role?');">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-sm btn-outline-warning">Deactivate</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="tab-pane fade" id="nav-clients" role="tabpanel" aria-labelledby="nav-clients-tab">
+                        <br />
+                        @if (Model.LinkedClientIds.Any())
+                        {
+                            <table class="table table-bordered" data-toggle="table">
+                                <thead>
+                                    <tr><th>Client ID</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var clientId in Model.LinkedClientIds)
+                                    {
+                                        <tr><td><code>@clientId</code></td></tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                        else
+                        {
+                            <p class="text-muted">No linked clients.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-
-<table class="table table-sm">
-    <thead>
-        <tr><th>Name</th><th>Description</th><th>Active</th><th></th></tr>
-    </thead>
-    <tbody>
-        @foreach (var role in Model.Application.Roles ?? Enumerable.Empty<Codx.Auth.Data.Entities.Enterprise.EnterpriseApplicationRole>())
-        {
-            <tr>
-                <td>@role.Name</td>
-                <td>@role.Description</td>
-                <td>@(role.IsActive ? "Yes" : "No")</td>
-                <td>
-                    @if (role.IsActive)
-                    {
-                        <form asp-action="DeactivateRole"
-                              asp-route-id="@Model.Application.Id"
-                              asp-route-roleId="@role.Id"
-                              method="post" style="display:inline"
-                              onsubmit="return confirm('Deactivate this role?');">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-sm btn-outline-warning">Deactivate</button>
-                        </form>
-                    }
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-@if (Model.LinkedClientIds.Any())
-{
-    <hr />
-    <h4>Linked Clients</h4>
-    <ul>
-        @foreach (var clientId in Model.LinkedClientIds)
-        {
-            <li><code>@clientId</code></li>
-        }
-    </ul>
-}
-
-<a asp-action="Index" class="btn btn-secondary mt-3">Back to Applications</a>
