@@ -41,8 +41,8 @@
                         <a class="nav-item nav-link active" id="nav-details-tab" data-toggle="tab" href="#nav-details" role="tab" aria-controls="nav-details" aria-selected="true">Details</a>
                         <a class="nav-item nav-link" id="nav-claims-tab" data-toggle="tab" href="#nav-claims" role="tab" aria-controls="nav-claims" aria-selected="false">Claims</a>
                         <a class="nav-item nav-link" id="nav-roles-tab" data-toggle="tab" href="#nav-roles" role="tab" aria-controls="nav-roles" aria-selected="false">Roles</a>
-                        <a class="nav-item nav-link" id="nav-tenants-tab" data-toggle="tab" href="#nav-tenants" role="tab" aria-controls="nav-tenants" aria-selected="false">Tenants</a>
-                        <a class="nav-item nav-link" id="nav-companies-tab" data-toggle="tab" href="#nav-companies" role="tab" aria-controls="nav-companies" aria-selected="false">Companies</a>
+                        <a class="nav-item nav-link" id="nav-tenant-memberships-tab" data-toggle="tab" href="#nav-tenant-memberships" role="tab" aria-controls="nav-tenant-memberships" aria-selected="false">Tenant Memberships</a>
+                        <a class="nav-item nav-link" id="nav-company-memberships-tab" data-toggle="tab" href="#nav-company-memberships" role="tab" aria-controls="nav-company-memberships" aria-selected="false">Company Memberships</a>
                         <a class="nav-item nav-link" id="nav-manage-tab" data-toggle="tab" href="#nav-manage" role="tab" aria-controls="nav-manage" aria-selected="false">Manage</a>
                     </div>
                 </nav>
@@ -143,52 +143,54 @@
                         </table>
                     </div>
 
-                    <div class="tab-pane fade" id="nav-tenants" role="tabpanel" aria-labelledby="nav-tenants-tab">
+                    <div class="tab-pane fade" id="nav-tenant-memberships" role="tabpanel" aria-labelledby="nav-tenant-memberships-tab">
                         <br />
-                        <span> These are the tenants I manage.</span>
+                        <span>These are my tenant memberships.</span>
                         <br /> <br />
                         <table class="table table-bordered"
-                               id="managedTenantTable"
+                               id="myTenantMembershipTable"
                                data-toggle="table"
-                               data-query-params="managedTenantTableParams"
+                               data-query-params="myTenantMembershipTableParams"
                                data-pagination="true"
                                data-side-pagination="server"
                                data-page-size="5"
                                data-page-list="[5,10,25,50,100,200,All]"
-                               data-ajax="managedTenantAjaxRequest">
-
+                               data-ajax="myTenantMembershipAjaxRequest">
                             <thead>
                                 <tr>
                                     <th data-field="tenantName">Tenant</th>
-                                    <th data-field="tenantId" data-width="150" data-formatter="manageTenantRowActionButtons"></th>
+                                    <th data-field="roles">Roles</th>
+                                    <th data-field="status">Status</th>
+                                    <!-- <th data-field="joinedAt">Joined</th> -->
+                                    <th data-field="membershipId" data-width="200" data-formatter="myTenantMembershipRowActionButtons"></th>
                                 </tr>
                             </thead>
-
                         </table>
                     </div>
 
-                    <div class="tab-pane fade" id="nav-companies" role="tabpanel" aria-labelledby="nav-companies-tab">
-                        <br />  
-                        <span> These are the companies I am a part of.</span>
+                    <div class="tab-pane fade" id="nav-company-memberships" role="tabpanel" aria-labelledby="nav-company-memberships-tab">
+                        <br />
+                        <span>These are my company memberships.</span>
                         <br /> <br />
                         <table class="table table-bordered"
-                               id="userCompanyTable"
+                               id="myCompanyMembershipTable"
                                data-toggle="table"
-                               data-query-params="userCompanyTableParams"
+                               data-query-params="myCompanyMembershipTableParams"
                                data-pagination="true"
                                data-side-pagination="server"
                                data-page-size="5"
                                data-page-list="[5,10,25,50,100,200,All]"
-                               data-ajax="userCompanyAjaxRequest">
-
+                               data-ajax="myCompanyMembershipAjaxRequest">
                             <thead>
                                 <tr>
-                                    <th data-field="companyName">Company</th>
                                     <th data-field="tenantName">Tenant</th>
-                                @*     <th data-field="companyId" data-width="150" data-formatter="userCompanyRowActionButtons"></th> *@
+                                    <th data-field="companyName">Company</th>
+                                    <th data-field="roles">Roles</th>
+                                    <th data-field="status">Status</th>
+                                    <!-- <th data-field="joinedAt">Joined</th> -->
+                                    <th data-field="membershipId" data-width="200" data-formatter="myCompanyMembershipRowActionButtons"></th>
                                 </tr>
                             </thead>
-
                         </table>
                     </div>
 
@@ -339,34 +341,32 @@
     </script>
 
     <script>
-        function managedTenantAjaxRequest(params) {
-            var url = '@Url.Action("GetMyTenantsTableData", "MyProfile")';
+        function myTenantMembershipAjaxRequest(params) {
+            var url = '@Url.Action("GetMyTenantMembershipsTableData", "MyProfile")';
             $.get(url + '?' + $.param(params.data)).then(function (res) {
                 params.success(res)
             })
         };
-        function managedTenantTableParams(params) {
+        function myTenantMembershipTableParams(params) {
             return params
         }
-        function manageTenantRowActionButtons(index, row) {
-            return  '<a class="btn btn-outline-info btn-sm" href="/MyProfile/ManageTenant/' + row.tenantId + '" title="Manage record details"><i class="fa fa-file-alt"></i></a> '
+        function myTenantMembershipRowActionButtons(value, row) {
+            return '<a class="btn btn-outline-secondary btn-sm" href="/MyProfile/ManageTenant/' + row.tenantId + '" title="Go to Tenant Details"><i class="fa fa-building"></i></a> ' +
+                '<a class="btn btn-outline-info btn-sm" href="/Memberships/' + value + '" title="Go to Membership Details"><i class="fa fa-id-card"></i></a>'
         }
 
-    </script>
-
-    <script>
-        function userCompanyAjaxRequest(params) {
-            var url = '@Url.Action("GetMyCompaniesTableData", "MyProfile")';
+        function myCompanyMembershipAjaxRequest(params) {
+            var url = '@Url.Action("GetMyCompanyMembershipsTableData", "MyProfile")';
             $.get(url + '?' + $.param(params.data)).then(function (res) {
                 params.success(res)
             })
         };
-        function userCompanyTableParams(params) {
+        function myCompanyMembershipTableParams(params) {
             return params
         }
-        function userCompanyRowActionButtons(index, row) {
-            return  ''
+        function myCompanyMembershipRowActionButtons(value, row) {
+            return '<a class="btn btn-outline-secondary btn-sm" href="/MyProfile/ManageTenantCompanyDetails/' + row.companyId + '" title="Go to Company Details"><i class="fa fa-sitemap"></i></a> ' +
+                '<a class="btn btn-outline-info btn-sm" href="/Memberships/' + value + '" title="Go to Membership Details"><i class="fa fa-id-card"></i></a>'
         }
-
     </script>
 }

@@ -261,6 +261,71 @@ namespace Codx.Auth.Controllers
             return Json(new { total, rows });
         }
 
+        // GET /memberships/GetUserTenantMembershipsTableData?userId=...
+        [HttpGet("GetUserTenantMembershipsTableData")]
+        [Authorize(Policy = "IdentityServerAdmin")]
+        public IActionResult GetUserTenantMembershipsTableData(Guid userId, string search, string sort, string order, int offset, int limit)
+        {
+            if (userId == Guid.Empty)
+                return BadRequest("userId is required.");
+
+            var query = _db.UserMemberships
+                .Where(m => m.UserId == userId && m.CompanyId == null)
+                .Include(m => m.Tenant)
+                .Include(m => m.MembershipRoles)
+                    .ThenInclude(r => r.RoleDefinition);
+
+            var total = query.Count();
+            var rows = query.OrderBy(m => m.Tenant.Name).Skip(offset).Take(limit).ToList()
+                .Select(m => new
+                {
+                    membershipId = m.Id,
+                    tenantId = m.TenantId,
+                    tenantName = m.Tenant.Name,
+                    roles = string.Join(", ", m.MembershipRoles
+                        .Where(r => r.Status == "Active")
+                        .Select(r => r.RoleDefinition.DisplayName)),
+                    status = m.Status,
+                    joinedAt = m.JoinedAt
+                }).ToList();
+
+            return Json(new { total, rows });
+        }
+
+        // GET /memberships/GetUserCompanyMembershipsTableData?userId=...
+        [HttpGet("GetUserCompanyMembershipsTableData")]
+        [Authorize(Policy = "IdentityServerAdmin")]
+        public IActionResult GetUserCompanyMembershipsTableData(Guid userId, string search, string sort, string order, int offset, int limit)
+        {
+            if (userId == Guid.Empty)
+                return BadRequest("userId is required.");
+
+            var query = _db.UserMemberships
+                .Where(m => m.UserId == userId && m.CompanyId != null)
+                .Include(m => m.Tenant)
+                .Include(m => m.Company)
+                .Include(m => m.MembershipRoles)
+                    .ThenInclude(r => r.RoleDefinition);
+
+            var total = query.Count();
+            var rows = query.OrderBy(m => m.Tenant.Name).ThenBy(m => m.Company.Name).Skip(offset).Take(limit).ToList()
+                .Select(m => new
+                {
+                    membershipId = m.Id,
+                    tenantId = m.TenantId,
+                    tenantName = m.Tenant.Name,
+                    companyId = m.CompanyId,
+                    companyName = m.Company.Name,
+                    roles = string.Join(", ", m.MembershipRoles
+                        .Where(r => r.Status == "Active")
+                        .Select(r => r.RoleDefinition.DisplayName)),
+                    status = m.Status,
+                    joinedAt = m.JoinedAt
+                }).ToList();
+
+            return Json(new { total, rows });
+        }
+
         // GET /memberships/GetTenantOwnersTableData?tenantId=...
         [HttpGet("GetTenantOwnersTableData")]
         public IActionResult GetTenantOwnersTableData(Guid tenantId, string search, string sort, string order, int offset, int limit)

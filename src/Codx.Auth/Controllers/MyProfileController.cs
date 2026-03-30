@@ -161,26 +161,60 @@ namespace Codx.Auth.Controllers
         }
 
         [HttpGet]
-        public JsonResult GetMyCompaniesTableData(string search, string sort, string order, int offset, int limit)
+        public JsonResult GetMyTenantMembershipsTableData(string search, string sort, string order, int offset, int limit)
         {
             var userId = User.GetUserId();
-            var query = _userdbcontext.UserCompanies.Include(o => o.Company).ThenInclude(c => c.Tenant).Where(o => o.UserId == userId);
+            var query = _userdbcontext.UserMemberships
+                .Where(m => m.UserId == userId && m.CompanyId == null)
+                .Include(m => m.Tenant)
+                .Include(m => m.MembershipRoles)
+                    .ThenInclude(r => r.RoleDefinition);
 
-            var data = query.OrderBy(o => o.Company.Name).Skip(offset).Take(limit).ToList();
-            var viewModel = data.Select(userCompany => new UserCompanyDetailsViewModel
-            {
-                UserId = userCompany.UserId,
-                CompanyId = userCompany.CompanyId,
-                CompanyName = userCompany.Company.Name,
-                TenantId = userCompany.Company.TenantId,
-                TenantName = userCompany.Company.Tenant.Name
-            }).ToList();
+            var total = query.Count();
+            var rows = query.OrderBy(m => m.Tenant.Name).Skip(offset).Take(limit).ToList()
+                .Select(m => new
+                {
+                    membershipId = m.Id,
+                    tenantId = m.TenantId,
+                    tenantName = m.Tenant.Name,
+                    roles = string.Join(", ", m.MembershipRoles
+                        .Where(r => r.Status == "Active")
+                        .Select(r => r.RoleDefinition.DisplayName)),
+                    status = m.Status,
+                    joinedAt = m.JoinedAt
+                }).ToList();
 
-            return Json(new
-            {
-                total = query.Count(),
-                rows = viewModel
-            });
+            return Json(new { total, rows });
+        }
+
+        [HttpGet]
+        public JsonResult GetMyCompanyMembershipsTableData(string search, string sort, string order, int offset, int limit)
+        {
+            var userId = User.GetUserId();
+            var query = _userdbcontext.UserMemberships
+                .Where(m => m.UserId == userId && m.CompanyId != null)
+                .Include(m => m.Tenant)
+                .Include(m => m.Company)
+                .Include(m => m.MembershipRoles)
+                    .ThenInclude(r => r.RoleDefinition);
+
+            var total = query.Count();
+            var rows = query.OrderBy(m => m.Tenant.Name).ThenBy(m => m.Company.Name).Skip(offset).Take(limit).ToList()
+                .Select(m => new
+                {
+                    membershipId = m.Id,
+                    tenantId = m.TenantId,
+                    tenantName = m.Tenant.Name,
+                    companyId = m.CompanyId,
+                    companyName = m.Company.Name,
+                    roles = string.Join(", ", m.MembershipRoles
+                        .Where(r => r.Status == "Active")
+                        .Select(r => r.RoleDefinition.DisplayName)),
+                    status = m.Status,
+                    joinedAt = m.JoinedAt
+                }).ToList();
+
+            return Json(new { total, rows });
         }
 
         [HttpGet]
