@@ -299,6 +299,9 @@ namespace Codx.Auth.Controllers
         
         public IActionResult GetManageTenantCompaniesTableData(Guid tenantid, string search, string sort, string order, int offset, int limit)
         {
+            if (!HasTenantRole(tenantid, "TENANT_OWNER", "TENANT_ADMIN", "TENANT_MANAGER"))
+                return Forbid();
+
             var query = _userdbcontext.Companies.Where(o => !o.IsDeleted && o.TenantId == tenantid);
             var data = query.OrderBy(o => o.Name).Skip(offset).Take(limit).ToList();
 
@@ -317,6 +320,10 @@ namespace Codx.Auth.Controllers
 
             if (record == null) return NotFound();
 
+            if (!HasTenantRole(record.TenantId, "TENANT_OWNER", "TENANT_ADMIN", "TENANT_MANAGER")
+                && !HasCompanyRole(record.Id, "COMPANY_ADMIN", "COMPANY_MANAGER", "MEMBER"))
+                return Forbid();
+
             var viewModel = _mapper.Map<CompanyDetailsViewModel>(record);
 
             return View(viewModel);
@@ -328,6 +335,9 @@ namespace Codx.Auth.Controllers
 
             if (tenant == null) return NotFound();
 
+            if (!HasTenantRole(tenantid, "TENANT_OWNER", "TENANT_ADMIN"))
+                return Forbid();
+
             var viewModel = new CompanyAddViewModel
             {
                 TenantId = tenant.Id,
@@ -338,6 +348,9 @@ namespace Codx.Auth.Controllers
         [HttpPost]
         public async Task<IActionResult> ManageTenantCompanyAdd(CompanyAddViewModel viewModel)
         {
+            if (!HasTenantRole(viewModel.TenantId, "TENANT_OWNER", "TENANT_ADMIN"))
+                return Forbid();
+
             if (ModelState.IsValid)
             {
                 var userId = User.GetUserId();
@@ -369,6 +382,9 @@ namespace Codx.Auth.Controllers
 
             if (record == null) return NotFound();
 
+            if (!HasTenantRole(record.TenantId, "TENANT_OWNER", "TENANT_ADMIN"))
+                return Forbid();
+
             var viewModel = _mapper.Map<CompanyEditViewModel>(record);
 
             return View(viewModel);
@@ -377,7 +393,11 @@ namespace Codx.Auth.Controllers
         [HttpPost]
         public async Task<IActionResult> ManageTenantCompanyEdit(CompanyEditViewModel viewModel)
         {
-            var isRecordFound = await _userdbcontext.Companies.AsNoTracking().AnyAsync(u => u.Id == viewModel.Id && !u.IsDeleted);
+            var existingRecord = await _userdbcontext.Companies.AsNoTracking().FirstOrDefaultAsync(u => u.Id == viewModel.Id && !u.IsDeleted);
+            var isRecordFound = existingRecord != null;
+
+            if (isRecordFound && !HasTenantRole(existingRecord.TenantId, "TENANT_OWNER", "TENANT_ADMIN"))
+                return Forbid();
 
             if (ModelState.IsValid && isRecordFound)
             {
@@ -408,6 +428,9 @@ namespace Codx.Auth.Controllers
 
             if (record == null) return NotFound();
 
+            if (!HasTenantRole(record.TenantId, "TENANT_OWNER", "TENANT_ADMIN"))
+                return Forbid();
+
             var viewModel = _mapper.Map<CompanyEditViewModel>(record);
 
             return View(viewModel);
@@ -416,12 +439,17 @@ namespace Codx.Auth.Controllers
         [HttpPost]
         public async Task<IActionResult> ManageTenantCompanyDelete(CompanyEditViewModel viewModel)
         {
-            var isRecordFound = _userdbcontext.Companies.Any(o => o.Id == viewModel.Id);
+            var record = _userdbcontext.Companies.FirstOrDefault(o => o.Id == viewModel.Id && !o.IsDeleted);
+            var isRecordFound = record != null;
+
+            if (isRecordFound && !HasTenantRole(record.TenantId, "TENANT_OWNER", "TENANT_ADMIN"))
+                return Forbid();
+
             if (ModelState.IsValid && isRecordFound)
             {
-                var record = _userdbcontext.Companies.FirstOrDefault(o => o.Id == viewModel.Id);
                 record.IsDeleted = true;
                 record.IsActive = false;
+                record.Status = "Cancelled";
                 record.UpdatedAt = DateTime.Now;
                 record.UpdatedBy = User.GetUserId();
 
@@ -441,6 +469,13 @@ namespace Codx.Auth.Controllers
 
         public IActionResult GetManageTenantCompanyUsersTableData(Guid companyid, string search, string sort, string order, int offset, int limit)
         {
+            var company = _userdbcontext.Companies.AsNoTracking().FirstOrDefault(o => o.Id == companyid && !o.IsDeleted);
+            if (company == null) return NotFound();
+
+            if (!HasTenantRole(company.TenantId, "TENANT_OWNER", "TENANT_ADMIN", "TENANT_MANAGER")
+                && !HasCompanyRole(companyid, "COMPANY_ADMIN", "COMPANY_MANAGER"))
+                return Forbid();
+
             var query = _userdbcontext.UserCompanies.Include(o => o.User).Where(o => o.CompanyId == companyid);
             var data = query.OrderBy(o => o.User.UserName).Skip(offset).Take(limit).ToList();
 
@@ -455,7 +490,13 @@ namespace Codx.Auth.Controllers
 
         public async Task<IActionResult> ManageTenantCompanyUserAdd(Guid companyid)
         {
-            var company = await _userdbcontext.Companies.FirstOrDefaultAsync(o => o.Id == companyid);
+            var company = await _userdbcontext.Companies.FirstOrDefaultAsync(o => o.Id == companyid && !o.IsDeleted);
+
+            if (company == null) return NotFound();
+
+            if (!HasTenantRole(company.TenantId, "TENANT_OWNER", "TENANT_ADMIN")
+                && !HasCompanyRole(companyid, "COMPANY_ADMIN"))
+                return Forbid();
 
             var viewModel = new CompanyUserAddViewModel
             {
@@ -467,6 +508,13 @@ namespace Codx.Auth.Controllers
         [HttpPost]
         public async Task<IActionResult> ManageTenantCompanyUserAdd(CompanyUserAddViewModel viewModel, string action)
         {
+            var company = await _userdbcontext.Companies.AsNoTracking().FirstOrDefaultAsync(o => o.Id == viewModel.CompanyId && !o.IsDeleted);
+            if (company == null) return NotFound();
+
+            if (!HasTenantRole(company.TenantId, "TENANT_OWNER", "TENANT_ADMIN")
+                && !HasCompanyRole(viewModel.CompanyId, "COMPANY_ADMIN"))
+                return Forbid();
+
             if (action == "Search")
             {
                 var findByEmail = await _userManager.FindByEmailAsync(viewModel.UserEmail);
@@ -530,6 +578,13 @@ namespace Codx.Auth.Controllers
         [HttpGet]
         public async Task<IActionResult> ManageTenantCompanyUserDelete(Guid companyid, Guid userid)
         {
+            var company = await _userdbcontext.Companies.AsNoTracking().FirstOrDefaultAsync(o => o.Id == companyid && !o.IsDeleted);
+            if (company == null) return NotFound();
+
+            if (!HasTenantRole(company.TenantId, "TENANT_OWNER", "TENANT_ADMIN")
+                && !HasCompanyRole(companyid, "COMPANY_ADMIN"))
+                return Forbid();
+
             var record = await _userdbcontext.UserCompanies.Include(o => o.User).FirstOrDefaultAsync(o => o.CompanyId == companyid && o.UserId == userid);
 
             var viewModel = _mapper.Map<CompanyUserEditViewModel>(record);
@@ -540,6 +595,13 @@ namespace Codx.Auth.Controllers
         [HttpPost]
         public async Task<IActionResult> ManageTenantCompanyUserDelete(CompanyUserEditViewModel viewModel)
         {
+            var company = await _userdbcontext.Companies.AsNoTracking().FirstOrDefaultAsync(o => o.Id == viewModel.CompanyId && !o.IsDeleted);
+            if (company == null) return NotFound();
+
+            if (!HasTenantRole(company.TenantId, "TENANT_OWNER", "TENANT_ADMIN")
+                && !HasCompanyRole(viewModel.CompanyId, "COMPANY_ADMIN"))
+                return Forbid();
+
             var record = await _userdbcontext.UserCompanies.Include(uc => uc.User).FirstOrDefaultAsync(o => o.CompanyId == viewModel.CompanyId && o.UserId == viewModel.UserId);
             if (ModelState.IsValid && record != null)
             {
@@ -1034,6 +1096,27 @@ namespace Codx.Auth.Controllers
             }
 
             return RedirectToAction("Index");
+        }
+
+        private bool HasTenantRole(Guid tenantId, params string[] roleCodes)
+        {
+            var userId = User.GetUserId();
+            return _userdbcontext.UserMemberships.Any(m =>
+                m.UserId == userId
+                && m.TenantId == tenantId
+                && m.CompanyId == null
+                && m.Status == "Active"
+                && m.MembershipRoles.Any(r => r.Status == "Active" && roleCodes.Contains(r.RoleDefinition.Code)));
+        }
+
+        private bool HasCompanyRole(Guid companyId, params string[] roleCodes)
+        {
+            var userId = User.GetUserId();
+            return _userdbcontext.UserMemberships.Any(m =>
+                m.UserId == userId
+                && m.CompanyId == companyId
+                && m.Status == "Active"
+                && m.MembershipRoles.Any(r => r.Status == "Active" && roleCodes.Contains(r.RoleDefinition.Code)));
         }
     }
 }

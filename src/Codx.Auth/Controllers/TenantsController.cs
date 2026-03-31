@@ -39,6 +39,7 @@ namespace Codx.Auth.Controllers
             });
         }
 
+        [HttpGet]
         public IActionResult Details(Guid id) 
         {
             var record = _context.Tenants.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
@@ -50,6 +51,7 @@ namespace Codx.Auth.Controllers
             return View(viewModel);
         }
 
+        [HttpGet]
         public IActionResult Add()
         {
             return View();
@@ -83,6 +85,7 @@ namespace Codx.Auth.Controllers
 
         }
 
+        [HttpGet]
         public async Task<IActionResult> Edit(Guid id)
         {
             var record = _context.Tenants.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
@@ -136,14 +139,14 @@ namespace Codx.Auth.Controllers
         [HttpPost]
         public async Task<IActionResult> Delete(TenantEditViewModel viewModel)
         {
-            var isRecordFound = _context.Tenants.Any(o => o.Id == viewModel.Id);
+            var isRecordFound = _context.Tenants.Any(o => o.Id == viewModel.Id && !o.IsDeleted);
             if (ModelState.IsValid && isRecordFound)
             {
                 var userId = User.GetUserId();
                 var now = DateTime.Now;
 
                 // Soft-delete the tenant
-                var record = _context.Tenants.FirstOrDefault(o => o.Id == viewModel.Id);
+                var record = _context.Tenants.FirstOrDefault(o => o.Id == viewModel.Id && !o.IsDeleted);
                 record.IsDeleted = true;
                 record.IsActive = false;
                 record.Status = "Cancelled";

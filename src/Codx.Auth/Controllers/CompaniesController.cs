@@ -38,6 +38,7 @@ namespace Codx.Auth.Controllers
             });
         }
 
+        [HttpGet]
         public IActionResult Details(Guid id) 
         {
             var record = _context.Companies.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
@@ -49,6 +50,7 @@ namespace Codx.Auth.Controllers
             return View(viewModel);
         }
 
+        [HttpGet]
         public async Task<IActionResult> Add(Guid tenantid)
         {
             var tenant = await _context.Tenants.FirstOrDefaultAsync(o => o.Id == tenantid && !o.IsDeleted);
@@ -90,6 +92,7 @@ namespace Codx.Auth.Controllers
 
         }
 
+        [HttpGet]
         public async Task<IActionResult> Edit(Guid id)
         {
             var record = _context.Companies.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
@@ -143,12 +146,13 @@ namespace Codx.Auth.Controllers
         [HttpPost]
         public async Task<IActionResult> Delete(CompanyEditViewModel viewModel)
         {
-            var isRecordFound = _context.Companies.Any(o => o.Id == viewModel.Id);
+            var isRecordFound = _context.Companies.Any(o => o.Id == viewModel.Id && !o.IsDeleted);
             if (ModelState.IsValid && isRecordFound)
             {
-                var record = _context.Companies.FirstOrDefault(o => o.Id == viewModel.Id);
+                var record = _context.Companies.FirstOrDefault(o => o.Id == viewModel.Id && !o.IsDeleted);
                 record.IsDeleted = true;
                 record.IsActive = false;
+                record.Status = "Cancelled";
                 record.UpdatedAt = DateTime.Now;
                 record.UpdatedBy = User.GetUserId();
 
