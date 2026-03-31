@@ -235,7 +235,9 @@ namespace Codx.Auth.Controllers
                 return RedirectToAction("Index");
             }
 
-            var record = _userdbcontext.Tenants.FirstOrDefault(o => o.Id == id);
+            var record = _userdbcontext.Tenants.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
+
+            if (record == null) return NotFound();
 
             var viewModel = _mapper.Map<TenantDetailsViewModel>(record);
 
@@ -259,7 +261,9 @@ namespace Codx.Auth.Controllers
                 return RedirectToAction("Index");
             }
 
-            var record = _userdbcontext.Tenants.FirstOrDefault(o => o.Id == id);
+            var record = _userdbcontext.Tenants.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
+
+            if (record == null) return NotFound();
 
             var viewModel = _mapper.Map<TenantEditViewModel>(record);
 
@@ -269,7 +273,7 @@ namespace Codx.Auth.Controllers
         [HttpPost]
         public async Task<IActionResult> ManageTenantEdit(TenantEditViewModel viewModel)
         {
-            var isRecordFound = await _userdbcontext.Tenants.AsNoTracking().AnyAsync(u => u.Id == viewModel.Id);
+            var isRecordFound = await _userdbcontext.Tenants.AsNoTracking().AnyAsync(u => u.Id == viewModel.Id && !u.IsDeleted);
 
             if (ModelState.IsValid && isRecordFound)
             {
@@ -309,7 +313,9 @@ namespace Codx.Auth.Controllers
 
         public IActionResult ManageTenantCompanyDetails(Guid id)
         {
-            var record = _userdbcontext.Companies.FirstOrDefault(o => o.Id == id);
+            var record = _userdbcontext.Companies.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
+
+            if (record == null) return NotFound();
 
             var viewModel = _mapper.Map<CompanyDetailsViewModel>(record);
 
@@ -318,7 +324,9 @@ namespace Codx.Auth.Controllers
 
         public async Task<IActionResult> ManageTenantCompanyAdd(Guid tenantid)
         {
-            var tenant = await _userdbcontext.Tenants.FirstOrDefaultAsync(o => o.Id == tenantid);
+            var tenant = await _userdbcontext.Tenants.FirstOrDefaultAsync(o => o.Id == tenantid && !o.IsDeleted);
+
+            if (tenant == null) return NotFound();
 
             var viewModel = new CompanyAddViewModel
             {
@@ -357,7 +365,9 @@ namespace Codx.Auth.Controllers
 
         public async Task<IActionResult> ManageTenantCompanyEdit(Guid id)
         {
-            var record = _userdbcontext.Companies.FirstOrDefault(o => o.Id == id);
+            var record = _userdbcontext.Companies.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
+
+            if (record == null) return NotFound();
 
             var viewModel = _mapper.Map<CompanyEditViewModel>(record);
 
@@ -367,7 +377,7 @@ namespace Codx.Auth.Controllers
         [HttpPost]
         public async Task<IActionResult> ManageTenantCompanyEdit(CompanyEditViewModel viewModel)
         {
-            var isRecordFound = await _userdbcontext.Companies.AsNoTracking().AnyAsync(u => u.Id == viewModel.Id);
+            var isRecordFound = await _userdbcontext.Companies.AsNoTracking().AnyAsync(u => u.Id == viewModel.Id && !u.IsDeleted);
 
             if (ModelState.IsValid && isRecordFound)
             {
@@ -394,7 +404,9 @@ namespace Codx.Auth.Controllers
         [HttpGet]
         public async Task<IActionResult> ManageTenantCompanyDelete(Guid id)
         {
-            var record = _userdbcontext.Companies.FirstOrDefault(o => o.Id == id);
+            var record = _userdbcontext.Companies.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
+
+            if (record == null) return NotFound();
 
             var viewModel = _mapper.Map<CompanyEditViewModel>(record);
 

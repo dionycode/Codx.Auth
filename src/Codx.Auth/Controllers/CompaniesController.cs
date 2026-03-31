@@ -40,7 +40,9 @@ namespace Codx.Auth.Controllers
 
         public IActionResult Details(Guid id) 
         {
-            var record = _context.Companies.FirstOrDefault(o => o.Id == id);
+            var record = _context.Companies.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
+
+            if (record == null) return NotFound();
 
             var viewModel = _mapper.Map<CompanyDetailsViewModel>(record);
 
@@ -49,7 +51,9 @@ namespace Codx.Auth.Controllers
 
         public async Task<IActionResult> Add(Guid tenantid)
         {
-            var tenant = await _context.Tenants.FirstOrDefaultAsync(o => o.Id == tenantid);
+            var tenant = await _context.Tenants.FirstOrDefaultAsync(o => o.Id == tenantid && !o.IsDeleted);
+
+            if (tenant == null) return NotFound();
 
             var viewModel = new CompanyAddViewModel
             {
@@ -88,7 +92,9 @@ namespace Codx.Auth.Controllers
 
         public async Task<IActionResult> Edit(Guid id)
         {
-            var record = _context.Companies.FirstOrDefault(o => o.Id == id);
+            var record = _context.Companies.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
+
+            if (record == null) return NotFound();
 
             var viewModel = _mapper.Map<CompanyEditViewModel>(record);
 
@@ -98,7 +104,7 @@ namespace Codx.Auth.Controllers
         [HttpPost]
         public async Task<IActionResult> Edit(CompanyEditViewModel viewModel)
         {
-            var isRecordFound = await _context.Companies.AsNoTracking().AnyAsync(u => u.Id == viewModel.Id);
+            var isRecordFound = await _context.Companies.AsNoTracking().AnyAsync(u => u.Id == viewModel.Id && !u.IsDeleted);
 
             if (ModelState.IsValid && isRecordFound)
             {
@@ -125,7 +131,9 @@ namespace Codx.Auth.Controllers
         [HttpGet]
         public async Task<IActionResult> Delete(Guid id)
         {
-            var record = _context.Companies.FirstOrDefault(o => o.Id == id);
+            var record = _context.Companies.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
+
+            if (record == null) return NotFound();
 
             var viewModel = _mapper.Map<CompanyEditViewModel>(record);
 
