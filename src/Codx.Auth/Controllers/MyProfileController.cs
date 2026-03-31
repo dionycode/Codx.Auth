@@ -240,26 +240,15 @@ namespace Codx.Auth.Controllers
             if (record == null) return NotFound();
 
             var viewModel = _mapper.Map<TenantDetailsViewModel>(record);
+            viewModel.IsOwner = HasTenantRole(id, "TENANT_OWNER");
 
             return View(viewModel);
         }
 
         public async Task<IActionResult> ManageTenantEdit(Guid id)
         {
-            var userId = User.GetUserId();
-            var tenantAdminRoles = new[] { "TENANT_OWNER", "TENANT_ADMIN", "TENANT_MANAGER" };
-            var hasMembership = _userdbcontext.UserMemberships
-                .Any(m => m.UserId == userId
-                          && m.TenantId == id
-                          && m.CompanyId == null
-                          && m.Status == "Active"
-                          && m.MembershipRoles.Any(r => r.Status == "Active"
-                              && tenantAdminRoles.Contains(r.RoleDefinition.Code)));
-
-            if (!hasMembership)
-            {
-                return RedirectToAction("Index");
-            }
+            if (!HasTenantRole(id, "TENANT_OWNER", "TENANT_ADMIN"))
+                return Forbid();
 
             var record = _userdbcontext.Tenants.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
 
@@ -273,6 +262,9 @@ namespace Codx.Auth.Controllers
         [HttpPost]
         public async Task<IActionResult> ManageTenantEdit(TenantEditViewModel viewModel)
         {
+            if (!HasTenantRole(viewModel.Id, "TENANT_OWNER", "TENANT_ADMIN"))
+                return Forbid();
+
             var isRecordFound = await _userdbcontext.Tenants.AsNoTracking().AnyAsync(u => u.Id == viewModel.Id && !u.IsDeleted);
 
             if (ModelState.IsValid && isRecordFound)
@@ -296,7 +288,114 @@ namespace Codx.Auth.Controllers
 
             return View(viewModel);
         }
-        
+        [HttpGet]
+        public IActionResult ManageTenantDelete(Guid id)
+        {
+            if (!HasTenantRole(id, "TENANT_OWNER"))
+                return Forbid();
+
+            var record = _userdbcontext.Tenants.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
+
+            if (record == null) return NotFound();
+
+            var viewModel = _mapper.Map<TenantEditViewModel>(record);
+
+            return View(viewModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ManageTenantDelete(TenantEditViewModel viewModel)
+        {
+            if (!HasTenantRole(viewModel.Id, "TENANT_OWNER"))
+                return Forbid();
+
+            var record = _userdbcontext.Tenants.FirstOrDefault(o => o.Id == viewModel.Id && !o.IsDeleted);
+
+            if (record == null) return NotFound();
+
+            if (ModelState.IsValid)
+            {
+                var userId = User.GetUserId();
+                var now = DateTime.Now;
+
+                // Soft-delete the tenant
+                record.IsDeleted = true;
+                record.IsActive = false;
+                record.Status = "Cancelled";
+                record.UpdatedAt = now;
+                record.UpdatedBy = userId;
+                _userdbcontext.Tenants.Update(record);
+
+                // Soft-delete all companies under this tenant
+                var companies = await _userdbcontext.Companies
+                    .Where(c => c.TenantId == viewModel.Id)
+                    .ToListAsync().ConfigureAwait(false);
+                foreach (var company in companies)
+                {
+                    company.IsDeleted = true;
+                    company.IsActive = false;
+                    company.Status = "Cancelled";
+                    company.UpdatedAt = now;
+                    company.UpdatedBy = userId;
+                }
+
+                // Remove tenant manager assignments
+                var tenantManagers = await _userdbcontext.TenantManagers
+                    .Where(tm => tm.TenantId == viewModel.Id)
+                    .ToListAsync().ConfigureAwait(false);
+                _userdbcontext.TenantManagers.RemoveRange(tenantManagers);
+
+                // Deactivate all memberships and their roles
+                var memberships = await _userdbcontext.UserMemberships
+                    .Include(m => m.MembershipRoles)
+                    .Where(m => m.TenantId == viewModel.Id)
+                    .ToListAsync().ConfigureAwait(false);
+                foreach (var membership in memberships)
+                {
+                    membership.Status = "Inactive";
+                    foreach (var role in membership.MembershipRoles)
+                    {
+                        role.Status = "Inactive";
+                    }
+                }
+
+                // Revoke pending invitations
+                var pendingInvitations = await _userdbcontext.Invitations
+                    .Where(i => i.TenantId == viewModel.Id && i.Status == "Pending")
+                    .ToListAsync().ConfigureAwait(false);
+                foreach (var invitation in pendingInvitations)
+                {
+                    invitation.Status = "Revoked";
+                }
+
+                // Revoke active workspace sessions
+                var activeSessions = await _userdbcontext.WorkspaceSessions
+                    .Where(s => s.TenantId == viewModel.Id && s.Status == "Active")
+                    .ToListAsync().ConfigureAwait(false);
+                foreach (var session in activeSessions)
+                {
+                    session.Status = "Revoked";
+                }
+
+                // Remove application role assignments
+                var appRoles = await _userdbcontext.UserApplicationRoles
+                    .Where(r => r.TenantId == viewModel.Id)
+                    .ToListAsync().ConfigureAwait(false);
+                _userdbcontext.UserApplicationRoles.RemoveRange(appRoles);
+
+                var result = await _userdbcontext.SaveChangesAsync().ConfigureAwait(false);
+                if (result > 0)
+                {
+                    return RedirectToAction(nameof(Index));
+                }
+
+                ModelState.AddModelError("", "Failed");
+            }
+
+            return View(viewModel);
+        }
+
         public IActionResult GetManageTenantCompaniesTableData(Guid tenantid, string search, string sort, string order, int offset, int limit)
         {
             if (!HasTenantRole(tenantid, "TENANT_OWNER", "TENANT_ADMIN", "TENANT_MANAGER"))

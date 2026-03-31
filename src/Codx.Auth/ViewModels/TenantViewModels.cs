@@ -7,6 +7,7 @@ namespace Codx.Auth.ViewModels
     public class TenantDetailsViewModel : BaseTenantViewModel
     {
         public Guid  Id { get; set; }
+        public bool IsOwner { get; set; }
     }
 
     public class TenantAddViewModel : BaseTenantViewModel
