@@ -21,22 +21,19 @@ namespace Codx.Auth.Extensions
         private readonly ITenantResolver _tenantResolver;
         private readonly bool _workspaceContextEnabled;
         private readonly UserDbContext _userDb;
-        private readonly IdentityServerDbContext _isDb;
 
         public CustomProfileService(
             UserManager<ApplicationUser> userManager,
             IWorkspaceContextAccessor workspaceContext,
             ITenantResolver tenantResolver,
             IConfiguration configuration,
-            UserDbContext userDb,
-            IdentityServerDbContext isDb)
+            UserDbContext userDb)
         {
             _userManager = userManager;
             _workspaceContext = workspaceContext;
             _tenantResolver = tenantResolver;
             _workspaceContextEnabled = configuration.GetValue<bool>("EnableWorkspaceContext");
             _userDb = userDb;
-            _isDb = isDb;
         }
 
         public async Task GetProfileDataAsync(ProfileDataRequestContext context)
@@ -197,8 +194,13 @@ namespace Codx.Auth.Extensions
                 claims.AddRange(roles.Select(r => new Claim("role", r)));
             }
 
-            if (isIdToken)
+            if (isIdToken || (_workspaceContextEnabled && isAccessToken))
             {
+                // For ID tokens, always include all identity claims.
+                // For workspace-enabled access tokens, the claims list is explicitly constructed
+                // above and must not be filtered by RequestedClaimTypes — workspace infrastructure
+                // claims (workspace_role, membership_id, etc.) are not registered as IS4 API
+                // resource user claims but must always appear in the access token.
                 context.IssuedClaims.AddRange(claims);
             }
             else if (context.RequestedClaimTypes.Any())
@@ -232,34 +234,17 @@ namespace Codx.Auth.Extensions
 
             var tenantId = _workspaceContext.TenantId;
             var companyId = _workspaceContext.CompanyId.Value;
+            var userId = user.Id;
 
-            // Get the scope names from the current request
-            var requestedScopeNames = context.RequestedResources.ParsedScopes
-                .Select(s => s.ParsedName)
-                .ToList();
-
-            if (!requestedScopeNames.Any())
-                return Enumerable.Empty<Claim>();
-
-            // Find ApiResource names whose scopes overlap with requested scopes.
-            // ApiResource.Name is used as the EnterpriseApplication.Id.
-            var appIds = await _isDb.ApiResourceScopes
-                .Where(rs => requestedScopeNames.Contains(rs.Scope))
-                .Select(rs => rs.ApiResource.Name)
-                .Distinct()
-                .ToListAsync();
-
-            if (!appIds.Any())
-                return Enumerable.Empty<Claim>();
-
-            var userId = user.Id; // Guid
-
+            // Return all active application role names for this user in the current workspace.
+            // We intentionally do not filter by requested scopes here:
+            //   - ParsedScopes may be empty at the GetProfileDataAsync stage depending on caller.
+            //   - The user should always see every app role they hold in this workspace.
             var roleNames = await _userDb.UserApplicationRoles
                 .Where(uar =>
                     uar.UserId == userId &&
                     uar.TenantId == tenantId &&
                     uar.CompanyId == companyId &&
-                    appIds.Contains(uar.ApplicationId) &&
                     uar.Role.IsActive)
                 .Select(uar => uar.Role.Name)
                 .Distinct()

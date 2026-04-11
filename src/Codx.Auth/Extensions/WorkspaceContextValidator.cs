@@ -130,8 +130,30 @@ namespace Codx.Auth.Extensions
                         _accessor.CompanyId = existingSession.CompanyId;
                         _accessor.MembershipId = existingMembership.Id;
                         _accessor.WorkspaceContextType = existingSession.WorkspaceContextType;
-                        _accessor.WorkspaceSessionId = existingSession.Id;
                         _accessor.WorkspaceRoleCodes = existingRoleCodes.AsReadOnly();
+
+                        // Renew the session so it stays alive across back-to-back token refreshes.
+                        // Without this, a session created with ExpiresAt = now + access_token_lifetime
+                        // (e.g. 5 min) would expire before the next refresh cycle, causing the
+                        // validator to fall through to Phase 1 and drop all workspace claims.
+                        await _sessionStore.RevokeAllForUserClientAsync(userId, clientId);
+                        var sessionLifetimeSecs = request.Client?.AbsoluteRefreshTokenLifetime > 0
+                            ? request.Client.AbsoluteRefreshTokenLifetime
+                            : Math.Max(request.AccessTokenLifetime, 86400);
+                        var renewedSession = new WorkspaceSession
+                        {
+                            Id = Guid.NewGuid(),
+                            UserId = userId,
+                            TenantId = existingSession.TenantId,
+                            CompanyId = existingSession.CompanyId,
+                            ClientId = clientId,
+                            WorkspaceContextType = existingSession.WorkspaceContextType,
+                            Status = "Active",
+                            ExpiresAt = DateTime.UtcNow.AddSeconds(sessionLifetimeSecs),
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        await _sessionStore.CreateAsync(renewedSession);
+                        _accessor.WorkspaceSessionId = renewedSession.Id;
                         return;
                     }
                 }
@@ -226,6 +248,11 @@ namespace Codx.Auth.Extensions
             await _sessionStore.RevokeAllForUserClientAsync(userId, clientId);
 
             var accessTokenLifetime = request.AccessTokenLifetime; // seconds
+            // Use the client's absolute refresh token lifetime so the session survives all token
+            // refreshes until the refresh token itself expires. Fall back to 24 h minimum.
+            var newSessionLifetime = request.Client?.AbsoluteRefreshTokenLifetime > 0
+                ? request.Client.AbsoluteRefreshTokenLifetime
+                : Math.Max(accessTokenLifetime, 86400);
             var session = new WorkspaceSession
             {
                 Id = Guid.NewGuid(),
@@ -235,7 +262,7 @@ namespace Codx.Auth.Extensions
                 ClientId = clientId,
                 WorkspaceContextType = workspaceContextType,
                 Status = "Active",
-                ExpiresAt = DateTime.UtcNow.AddSeconds(accessTokenLifetime),
+                ExpiresAt = DateTime.UtcNow.AddSeconds(newSessionLifetime),
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -280,62 +307,106 @@ namespace Codx.Auth.Extensions
         {
             if (!companyId.HasValue) return;
 
-            // Map requested scopes → API resource names (used as ApplicationId)
-            var requestedScopes = request.RequestedScopes?.ToList() ?? new List<string>();
-            if (!requestedScopes.Any()) return;
-
-            var appIds = await _isDb.ApiResourceScopes
-                .Where(rs => requestedScopes.Contains(rs.Scope))
-                .Select(rs => rs.ApiResource.Name)
-                .Distinct()
-                .ToListAsync();
-
-            if (!appIds.Any()) return;
-
-            // Check existing assignments for this user/workspace
-            var existingAppIds = await _db.UserApplicationRoles
-                .Where(uar =>
-                    uar.UserId == userId &&
-                    uar.TenantId == tenantId &&
-                    uar.CompanyId == companyId.Value &&
-                    appIds.Contains(uar.ApplicationId))
-                .Select(uar => uar.ApplicationId)
-                .Distinct()
-                .ToListAsync();
-
-            // Only auto-assign for apps where the user has NO existing assignment at all
-            var appsWithoutRoles = appIds.Except(existingAppIds).ToList();
-            if (!appsWithoutRoles.Any()) return;
-
-            var defaultRoles = await _db.EnterpriseApplicationRoles
-                .Where(r =>
-                    appsWithoutRoles.Contains(r.ApplicationId) &&
-                    r.IsActive &&
-                    r.IsDefault)
-                .ToListAsync();
-
-            if (!defaultRoles.Any()) return;
-
-            var now = DateTime.UtcNow;
-            var newAssignments = defaultRoles.Select(role => new UserApplicationRole
+            try
             {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                TenantId = tenantId,
-                CompanyId = companyId.Value,
-                ApplicationId = role.ApplicationId,
-                RoleId = role.Id,
-                AssignedAt = now,
-                AssignedByUserId = userId   // self-assigned via default role policy
-            }).ToList();
+                // Map requested scopes → API resource names (used as ApplicationId).
+                // For refresh_token grants where no scope param is sent, RequestedScopes is null/empty.
+                // Fall back to the client's full AllowedScopes so the auto-assign always runs.
+                var requestedScopes = request.RequestedScopes?.ToList();
+                if (requestedScopes == null || !requestedScopes.Any())
+                    requestedScopes = request.Client?.AllowedScopes?.ToList() ?? new List<string>();
 
-            _db.UserApplicationRoles.AddRange(newAssignments);
-            await _db.SaveChangesAsync();
+                if (!requestedScopes.Any())
+                {
+                    _logger.LogDebug("AutoAssignDefaultRoles: no scopes available for userId={UserId}, skipping", userId);
+                    return;
+                }
 
-            _logger.LogInformation(
-                "AutoAssignDefaultRoles: assigned {Count} default role(s) for userId={UserId} in tenantId={TenantId}/companyId={CompanyId} [apps: {Apps}]",
-                newAssignments.Count, userId, tenantId, companyId,
-                string.Join(", ", defaultRoles.Select(r => $"{r.ApplicationId}:{r.Name}")));
+                // Primary lookup: find API resource names via IS4 ApiResourceScopes join
+                var appIds = await _isDb.ApiResourceScopes
+                    .Where(rs => requestedScopes.Contains(rs.Scope))
+                    .Select(rs => rs.ApiResource.Name)
+                    .Distinct()
+                    .ToListAsync();
+
+                // Fallback: scope names often match EnterpriseApplication IDs directly
+                // (e.g. scope "ezra-api" → EnterpriseApplication.Id "ezra-api")
+                if (!appIds.Any())
+                {
+                    _logger.LogDebug(
+                        "AutoAssignDefaultRoles: IS4 scope join returned nothing for scopes [{Scopes}], trying direct EnterpriseApplication ID match",
+                        string.Join(", ", requestedScopes));
+
+                    appIds = await _db.EnterpriseApplications
+                        .Where(a => a.IsActive && requestedScopes.Contains(a.Id))
+                        .Select(a => a.Id)
+                        .ToListAsync();
+                }
+
+                if (!appIds.Any())
+                {
+                    _logger.LogDebug("AutoAssignDefaultRoles: no matching EnterpriseApplications found for scopes [{Scopes}]", string.Join(", ", requestedScopes));
+                    return;
+                }
+
+                // Check existing assignments for this user/workspace
+                var existingAppIds = await _db.UserApplicationRoles
+                    .Where(uar =>
+                        uar.UserId == userId &&
+                        uar.TenantId == tenantId &&
+                        uar.CompanyId == companyId.Value &&
+                        appIds.Contains(uar.ApplicationId))
+                    .Select(uar => uar.ApplicationId)
+                    .Distinct()
+                    .ToListAsync();
+
+                // Only auto-assign for apps where the user has NO existing assignment at all
+                var appsWithoutRoles = appIds.Except(existingAppIds).ToList();
+                if (!appsWithoutRoles.Any()) return;
+
+                var defaultRoles = await _db.EnterpriseApplicationRoles
+                    .Where(r =>
+                        appsWithoutRoles.Contains(r.ApplicationId) &&
+                        r.IsActive &&
+                        r.IsDefault)
+                    .ToListAsync();
+
+                if (!defaultRoles.Any())
+                {
+                    _logger.LogDebug(
+                        "AutoAssignDefaultRoles: no IsDefault roles found for apps [{Apps}]",
+                        string.Join(", ", appsWithoutRoles));
+                    return;
+                }
+
+                var now = DateTime.UtcNow;
+                var newAssignments = defaultRoles.Select(role => new UserApplicationRole
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    TenantId = tenantId,
+                    CompanyId = companyId.Value,
+                    ApplicationId = role.ApplicationId,
+                    RoleId = role.Id,
+                    AssignedAt = now,
+                    AssignedByUserId = userId   // self-assigned via default role policy
+                }).ToList();
+
+                _db.UserApplicationRoles.AddRange(newAssignments);
+                await _db.SaveChangesAsync();
+
+                _logger.LogInformation(
+                    "AutoAssignDefaultRoles: assigned {Count} default role(s) for userId={UserId} in tenantId={TenantId}/companyId={CompanyId} [apps: {Apps}]",
+                    newAssignments.Count, userId, tenantId, companyId,
+                    string.Join(", ", defaultRoles.Select(r => $"{r.ApplicationId}:{r.Name}")));
+            }
+            catch (Exception ex)
+            {
+                // Non-fatal — log and continue. A failed auto-assign should not block token issuance.
+                _logger.LogError(ex,
+                    "AutoAssignDefaultRoles failed for userId={UserId} tenantId={TenantId} companyId={CompanyId}",
+                    userId, tenantId, companyId);
+            }
         }
 
         private static void Fail(CustomTokenRequestValidationContext context, string error)
