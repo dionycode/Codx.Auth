@@ -255,12 +255,13 @@ namespace Codx.Auth
 
             app.UseRouting();
 
+            // CORS must be before UseAuthentication/UseAuthorization so that
+            // preflight OPTIONS requests are handled before auth middleware runs.
+            app.UseCors("AllowSpecificOrigins");
+
             app.UseIdentityServer();
             app.UseAuthentication();
             app.UseAuthorization();
-
-            // Use CORS middleware
-            app.UseCors("AllowSpecificOrigins");
 
             app.UseEndpoints(endpoints =>
             {

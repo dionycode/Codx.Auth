@@ -131,6 +131,7 @@ namespace Codx.Auth.Controllers
                 Name = model.Name,
                 Description = model.Description,
                 IsActive = true,
+                IsDefault = model.IsDefault,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -154,6 +155,60 @@ namespace Codx.Auth.Controllers
             await _db.SaveChangesAsync();
 
             return RedirectToAction("Details", new { id });
+        }
+
+        // GET /applications/{appId}/roles/{roleId}/edit
+        [HttpGet("{appId}/roles/{roleId}/edit")]
+        public async Task<IActionResult> EditRole(string appId, Guid roleId)
+        {
+            var role = await _db.EnterpriseApplicationRoles
+                .Include(r => r.Application)
+                .FirstOrDefaultAsync(r => r.Id == roleId && r.ApplicationId == appId);
+
+            if (role == null) return NotFound();
+
+            return View(new ApplicationRoleEditViewModel
+            {
+                Id = role.Id,
+                ApplicationId = appId,
+                ApplicationName = role.Application?.DisplayName,
+                Name = role.Name,
+                Description = role.Description,
+                IsDefault = role.IsDefault,
+                IsActive = role.IsActive
+            });
+        }
+
+        // POST /applications/{appId}/roles/{roleId}/edit
+        [HttpPost("{appId}/roles/{roleId}/edit")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditRole(string appId, Guid roleId, ApplicationRoleEditViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+
+            var role = await _db.EnterpriseApplicationRoles
+                .FirstOrDefaultAsync(r => r.Id == roleId && r.ApplicationId == appId);
+
+            if (role == null) return NotFound();
+
+            // Prevent duplicate name within the same application (excluding self)
+            if (await _db.EnterpriseApplicationRoles.AnyAsync(r =>
+                    r.ApplicationId == appId &&
+                    r.Id != roleId &&
+                    r.Name == model.Name))
+            {
+                ModelState.AddModelError(nameof(model.Name), "A role with this name already exists for this application.");
+                return View(model);
+            }
+
+            role.Name = model.Name;
+            role.Description = model.Description;
+            role.IsDefault = model.IsDefault;
+            role.IsActive = model.IsActive;
+
+            await _db.SaveChangesAsync();
+
+            return RedirectToAction("Details", new { id = appId });
         }
     }
 }

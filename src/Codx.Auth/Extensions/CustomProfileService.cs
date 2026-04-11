@@ -56,8 +56,26 @@ namespace Codx.Auth.Extensions
                 // ----------------------------------------------------------------
                 if (_workspaceContextEnabled)
                 {
-                    // New workspace-context path: WorkspaceContextValidator has already
-                    // run and populated IWorkspaceContextAccessor for this scope.
+                    // WorkspaceContextValidator populates IWorkspaceContextAccessor, but Duende
+                    // IdentityServer resolves IProfileService from a different DI scope, so the
+                    // in-memory accessor may be empty. When that happens, fall back to looking up
+                    // the active WorkspaceSession from the database directly.
+                    if (_workspaceContext.TenantId == Guid.Empty)
+                    {
+                        await ResolveWorkspaceContextFromDbAsync(user, context);
+                    }
+
+                    // If still empty after DB lookup, the token lacks workspace context
+                    // (Phase 1 — initial login before workspace selection). Skip workspace claims.
+                    if (_workspaceContext.TenantId == Guid.Empty)
+                    {
+                        if (!string.IsNullOrWhiteSpace(user.Email))
+                            claims.Add(new Claim("email", user.Email));
+
+                        context.IssuedClaims.AddRange(claims);
+                        return;
+                    }
+
                     claims.Add(new Claim("tenant_id", _workspaceContext.TenantId.ToString()));
                     claims.Add(new Claim("membership_id", _workspaceContext.MembershipId.ToString()));
                     claims.Add(new Claim("workspace_context_type", _workspaceContext.WorkspaceContextType ?? "tenant"));
@@ -255,6 +273,56 @@ namespace Codx.Auth.Extensions
             var parts = new[] { user.GivenName, user.MiddleName, user.FamilyName }
                 .Where(p => !string.IsNullOrWhiteSpace(p));
             return string.Join(" ", parts).Trim();
+        }
+
+        /// <summary>
+        /// Populates IWorkspaceContextAccessor from the active WorkspaceSession in the DB.
+        /// Used as a fallback when the in-memory accessor is empty because Duende IdentityServer
+        /// resolves IProfileService in a separate DI scope from ICustomTokenRequestValidator.
+        /// </summary>
+        private async Task ResolveWorkspaceContextFromDbAsync(
+            ApplicationUser user,
+            ProfileDataRequestContext context)
+        {
+            var clientId = context.Client?.ClientId;
+            if (string.IsNullOrWhiteSpace(clientId)) return;
+
+            var session = await _userDb.WorkspaceSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s =>
+                    s.UserId == user.Id &&
+                    s.ClientId == clientId &&
+                    s.Status == "Active" &&
+                    s.ExpiresAt > DateTime.UtcNow);
+
+            if (session == null) return;
+
+            var membership = await _userDb.UserMemberships
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m =>
+                    m.UserId == user.Id &&
+                    m.TenantId == session.TenantId &&
+                    m.CompanyId == session.CompanyId &&
+                    m.Status == "Active");
+
+            if (membership == null) return;
+
+            var roleCodes = await _userDb.UserMembershipRoles
+                .AsNoTracking()
+                .Where(umr => umr.MembershipId == membership.Id && umr.Status == "Active")
+                .Join(_userDb.WorkspaceRoleDefinitions.Where(wrd => wrd.IsActive),
+                    umr => umr.RoleId,
+                    wrd => wrd.Id,
+                    (umr, wrd) => wrd.Code)
+                .ToListAsync();
+
+            _workspaceContext.UserId = user.Id;
+            _workspaceContext.TenantId = session.TenantId;
+            _workspaceContext.CompanyId = session.CompanyId;
+            _workspaceContext.MembershipId = membership.Id;
+            _workspaceContext.WorkspaceContextType = session.WorkspaceContextType;
+            _workspaceContext.WorkspaceSessionId = session.Id;
+            _workspaceContext.WorkspaceRoleCodes = roleCodes.AsReadOnly();
         }
     }
 }

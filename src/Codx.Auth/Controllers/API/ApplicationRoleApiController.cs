@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
@@ -21,6 +22,21 @@ namespace Codx.Auth.Controllers.API
         public ApplicationRoleApiController(UserDbContext db)
         {
             _db = db;
+        }
+
+        // GET /api/v1/applications/{appId}/roles — list available role definitions (for building assignment UI)
+        [HttpGet("/api/v1/applications/{appId}/roles")]
+        public async Task<IActionResult> ListRoleDefinitions(string appId)
+        {
+            if (!await _db.EnterpriseApplications.AnyAsync(a => a.Id == appId))
+                return Problem(detail: $"Application '{appId}' not found.", statusCode: 404);
+
+            var roles = await _db.EnterpriseApplicationRoles
+                .Where(r => r.ApplicationId == appId && r.IsActive)
+                .Select(r => new { r.Id, r.Name, r.Description, r.IsDefault })
+                .ToListAsync();
+
+            return Ok(roles);
         }
 
         // GET /api/v1/applications/{appId}/user-roles
@@ -64,6 +80,10 @@ namespace Codx.Auth.Controllers.API
         {
             if (!ModelState.IsValid)
                 return ValidationProblem(ModelState);
+
+            // Only workspace admins may assign roles to other users
+            if (!CallerIsWorkspaceAdmin())
+                return Problem(detail: "Only CompanyAdmin or TenantAdmin may assign application roles.", statusCode: 403);
 
             // Validate appId exists
             if (!await _db.EnterpriseApplications.AnyAsync(a => a.Id == appId))
@@ -113,6 +133,10 @@ namespace Codx.Auth.Controllers.API
         [HttpDelete("{id}")]
         public async Task<IActionResult> Revoke(string appId, Guid id)
         {
+            // Only workspace admins may revoke roles
+            if (!CallerIsWorkspaceAdmin())
+                return Problem(detail: "Only CompanyAdmin or TenantAdmin may revoke application roles.", statusCode: 403);
+
             var assignment = await _db.UserApplicationRoles
                 .FirstOrDefaultAsync(uar => uar.Id == id && uar.ApplicationId == appId);
 
@@ -129,6 +153,17 @@ namespace Codx.Auth.Controllers.API
 
             return NoContent();
         }
+
+        private static readonly HashSet<string> _adminRoles = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "CompanyAdmin", "TenantAdmin", "PlatformAdministrator"
+        };
+
+        // Returns true when the caller has at least one qualifying workspace role claim.
+        private bool CallerIsWorkspaceAdmin() =>
+            User.Claims
+                .Where(c => c.Type == "workspace_role")
+                .Any(c => _adminRoles.Contains(c.Value));
     }
 
     public class AssignUserRoleRequest

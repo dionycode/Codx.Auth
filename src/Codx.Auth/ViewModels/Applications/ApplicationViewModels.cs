@@ -38,5 +38,28 @@ namespace Codx.Auth.ViewModels.Applications
 
         [System.ComponentModel.DataAnnotations.StringLength(500)]
         public string Description { get; set; }
+
+        /// <summary>
+        /// When true, new members who have no application role assigned will automatically
+        /// receive this role on their first workspace token request.
+        /// </summary>
+        public bool IsDefault { get; set; }
+    }
+
+    public class ApplicationRoleEditViewModel
+    {
+        public Guid Id { get; set; }
+        public string ApplicationId { get; set; }
+        public string ApplicationName { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string Name { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(500)]
+        public string Description { get; set; }
+
+        public bool IsDefault { get; set; }
+        public bool IsActive { get; set; }
     }
 }

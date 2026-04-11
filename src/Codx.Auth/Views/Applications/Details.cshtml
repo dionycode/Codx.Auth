@@ -67,8 +67,9 @@
                                 <tr>
                                     <th>Name</th>
                                     <th>Description</th>
+                                    <th>Default</th>
                                     <th>Active</th>
-                                    <th data-width="150"></th>
+                                    <th data-width="200"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -77,8 +78,11 @@
                                     <tr>
                                         <td>@role.Name</td>
                                         <td>@role.Description</td>
+                                        <td>@(role.IsDefault ? "✓" : "")</td>
                                         <td>@(role.IsActive ? "Yes" : "No")</td>
                                         <td>
+                                            <a href="@Url.Action("EditRole", new { appId = Model.Application.Id, roleId = role.Id })"
+                                               class="btn btn-sm btn-outline-primary mr-1">Edit</a>
                                             @if (role.IsActive)
                                             {
                                                 <form asp-action="DeactivateRole"
