@@ -100,17 +100,22 @@ namespace Codx.Auth.Controllers
         [HttpPost]
         public async Task<IActionResult> Edit(TenantEditViewModel viewModel)
         {
-            var isRecordFound = await _context.Tenants.AsNoTracking().AnyAsync(u => u.Id == viewModel.Id && !u.IsDeleted);
+            var record = await _context.Tenants.FirstOrDefaultAsync(u => u.Id == viewModel.Id && !u.IsDeleted);
 
-            if (ModelState.IsValid && isRecordFound)
+            if (ModelState.IsValid && record != null)
             {
                 var userId = User.GetUserId();
 
-                var record = _mapper.Map<Tenant>(viewModel);
+                record.Name = viewModel.Name;
+                record.Email = viewModel.Email;
+                record.Phone = viewModel.Phone;
+                record.Address = viewModel.Address;
+                record.Logo = viewModel.Logo;
+                record.Theme = viewModel.Theme;
+                record.Description = viewModel.Description;
                 record.UpdatedAt = DateTime.Now;
                 record.UpdatedBy = userId;
 
-                _context.Tenants.Update(record);
                 var result = await _context.SaveChangesAsync().ConfigureAwait(false);
 
                 if (result > 0)
