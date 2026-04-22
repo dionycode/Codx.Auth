@@ -21,6 +21,7 @@
                         <a class="nav-item nav-link active" id="nav-details-tab" data-toggle="tab" href="#nav-details" role="tab" aria-controls="nav-details" aria-selected="true">Details</a>
                         <a class="nav-item nav-link" id="nav-roles-tab" data-toggle="tab" href="#nav-roles" role="tab" aria-controls="nav-roles" aria-selected="false">Roles</a>
                         <a class="nav-item nav-link" id="nav-clients-tab" data-toggle="tab" href="#nav-clients" role="tab" aria-controls="nav-clients" aria-selected="false">Linked Clients</a>
+                        <a class="nav-item nav-link" id="nav-assignments-tab" data-toggle="tab" href="#nav-assignments" role="tab" aria-controls="nav-assignments" aria-selected="false">User Assignments</a>
                     </div>
                 </nav>
             </div>
@@ -121,8 +122,189 @@
                             <p class="text-muted">No linked clients.</p>
                         }
                     </div>
+
+                    <div class="tab-pane fade" id="nav-assignments" role="tabpanel" aria-labelledby="nav-assignments-tab">
+                        <br />
+
+                        @if (TempData["AssignSuccess"] != null)
+                        {
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                @TempData["AssignSuccess"]
+                                <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+                            </div>
+                        }
+                        @if (TempData["AssignError"] != null)
+                        {
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                @TempData["AssignError"]
+                                <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+                            </div>
+                        }
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label>Tenant</label>
+                                <select id="assignTenantSelect" class="form-control">
+                                    <option value="">-- Select Tenant --</option>
+                                    @foreach (var t in Model.AllTenants)
+                                    {
+                                        <option value="@t.Id">@t.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label>Company</label>
+                                <select id="assignCompanySelect" class="form-control" disabled>
+                                    <option value="">-- Select Company --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <table class="table table-bordered" id="assignmentsTable">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Role</th>
+                                    <th>Assigned At</th>
+                                    <th>Assigned By</th>
+                                    <th data-width="120"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="assignmentsTableBody">
+                                <tr><td colspan="5" class="text-center text-muted">Select a tenant and company to view assignments.</td></tr>
+                            </tbody>
+                        </table>
+
+                        <hr />
+                        <h6>Assign Role</h6>
+                        <form id="assignRoleForm" asp-action="Assign" asp-route-appId="@Model.Application.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" id="assignTenantId" name="TenantId" value="" />
+                            <input type="hidden" id="assignCompanyId" name="CompanyId" value="" />
+                            <div class="form-row align-items-end">
+                                <div class="col-md-4">
+                                    <label>User</label>
+                                    <select id="assignUserSelect" name="UserId" class="form-control" disabled>
+                                        <option value="">-- Select Company First --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label>Role</label>
+                                    <select name="RoleId" class="form-control">
+                                        <option value="">-- Select Role --</option>
+                                        @foreach (var role in Model.Application.Roles?.Where(r => r.IsActive) ?? Enumerable.Empty<Codx.Auth.Data.Entities.Enterprise.EnterpriseApplicationRole>())
+                                        {
+                                            <option value="@role.Id">@role.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-primary" id="assignSubmitBtn" disabled>Assign</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+(function () {
+    var appId = '@Model.Application.Id';
+    var antiForgeryToken = $('input[name="__RequestVerificationToken"]').first().val();
+
+    var $tenantSel   = $('#assignTenantSelect');
+    var $companySel  = $('#assignCompanySelect');
+    var $userSel     = $('#assignUserSelect');
+    var $submitBtn   = $('#assignSubmitBtn');
+    var $tenantHid   = $('#assignTenantId');
+    var $companyHid  = $('#assignCompanyId');
+    var $tbody       = $('#assignmentsTableBody');
+
+    $tenantSel.on('change', function () {
+        var tenantId = $(this).val();
+        $companySel.html('<option value="">-- Loading... --</option>').prop('disabled', true);
+        $userSel.html('<option value="">-- Select Company First --</option>').prop('disabled', true);
+        $submitBtn.prop('disabled', true);
+        $tenantHid.val(tenantId);
+        $companyHid.val('');
+        $tbody.html('<tr><td colspan="5" class="text-center text-muted">Select a company to view assignments.</td></tr>');
+
+        if (!tenantId) {
+            $companySel.html('<option value="">-- Select Company --</option>');
+            return;
+        }
+
+        $.getJSON('/Companies/GetCompaniesTableData', { tenantid: tenantId, offset: 0, limit: 500 }, function (data) {
+            var opts = '<option value="">-- Select Company --</option>';
+            (data.rows || []).forEach(function (c) {
+                opts += '<option value="' + c.id + '">' + $('<span>').text(c.name).html() + '</option>';
+            });
+            $companySel.html(opts).prop('disabled', false);
+        }).fail(function () {
+            $companySel.html('<option value="">-- Error loading companies --</option>');
+        });
+    });
+
+    $companySel.on('change', function () {
+        var tenantId  = $tenantSel.val();
+        var companyId = $(this).val();
+        $userSel.html('<option value="">-- Loading... --</option>').prop('disabled', true);
+        $submitBtn.prop('disabled', true);
+        $companyHid.val(companyId);
+        $tbody.html('<tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>');
+
+        if (!companyId) {
+            $userSel.html('<option value="">-- Select Company First --</option>');
+            $tbody.html('<tr><td colspan="5" class="text-center text-muted">Select a company to view assignments.</td></tr>');
+            return;
+        }
+
+        // Load assignments table
+        $.getJSON('/Applications/' + appId + '/user-assignments', { tenantId: tenantId, companyId: companyId }, function (rows) {
+            if (!rows || rows.length === 0) {
+                $tbody.html('<tr><td colspan="5" class="text-center text-muted">No role assignments for this company.</td></tr>');
+            } else {
+                var html = '';
+                rows.forEach(function (r) {
+                    html += '<tr>' +
+                        '<td>' + $('<span>').text(r.userEmail).html() + '</td>' +
+                        '<td><span class="badge badge-secondary">' + $('<span>').text(r.roleName).html() + '</span></td>' +
+                        '<td>' + new Date(r.assignedAt).toLocaleString() + '</td>' +
+                        '<td>' + $('<span>').text(r.assignedByEmail).html() + '</td>' +
+                        '<td>' +
+                            '<form method="post" action="/Applications/' + appId + '/user-assignments/' + r.id + '/remove" style="display:inline" onsubmit="return confirm(\'Remove this assignment?\')">' +
+                                '<input type="hidden" name="__RequestVerificationToken" value="' + antiForgeryToken + '" />' +
+                                '<button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>' +
+                            '</form>' +
+                        '</td></tr>';
+                });
+                $tbody.html(html);
+            }
+        }).fail(function () {
+            $tbody.html('<tr><td colspan="5" class="text-danger">Error loading assignments.</td></tr>');
+        });
+
+        // Load user picker
+        $.getJSON('/Applications/' + appId + '/company-members', { tenantId: tenantId, companyId: companyId }, function (members) {
+            var opts = '<option value="">-- Select User --</option>';
+            (members || []).forEach(function (m) {
+                opts += '<option value="' + m.userId + '">' + $('<span>').text(m.email).html() + '</option>';
+            });
+            $userSel.html(opts).prop('disabled', false);
+            $submitBtn.prop('disabled', false);
+        }).fail(function () {
+            $userSel.html('<option value="">-- Error loading users --</option>');
+        });
+    });
+
+    // If redirected back to this tab after an action, re-open it
+    if (window.location.hash === '#nav-assignments' || '@(TempData.Peek("AssignSuccess") != null || TempData.Peek("AssignError") != null)' === 'True') {
+        $('#nav-assignments-tab').tab('show');
+    }
+}());
+</script>
+}

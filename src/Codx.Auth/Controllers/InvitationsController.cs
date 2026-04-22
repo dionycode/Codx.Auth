@@ -1,5 +1,6 @@
 using Codx.Auth.Data.Contexts;
 using Codx.Auth.Data.Entities.Enterprise;
+using Codx.Auth.Extensions;
 using Codx.Auth.Services;
 using Codx.Auth.Services.Interfaces;
 using Codx.Auth.ViewModels.Invitations;
@@ -223,21 +224,30 @@ namespace Codx.Auth.Controllers
         {
             if (User.IsInRole("PlatformAdministrator")) return true;
 
-            if (IsTenantOwnerForTenant(tenantId)) return true;
+            var userId = User.GetUserId();
+            if (userId == Guid.Empty) return false;
 
-            var workspaceRole = User.FindFirst("workspace_role")?.Value;
+            // TenantOwner or TenantAdmin can manage anything within their tenant
+            if (_db.UserMemberships.Any(m =>
+                m.UserId == userId
+                && m.TenantId == tenantId
+                && m.CompanyId == null
+                && m.Status == "Active"
+                && m.MembershipRoles.Any(r =>
+                    r.Status == "Active" &&
+                    (r.RoleDefinition.Code == "TENANT_OWNER" || r.RoleDefinition.Code == "TENANT_ADMIN"))))
+                return true;
 
-            if (workspaceRole == "TenantAdmin")
-            {
-                var claimTenantId = User.FindFirst("tenant_id")?.Value;
-                return Guid.TryParse(claimTenantId, out var tid) && tid == tenantId;
-            }
-
-            if (workspaceRole == "CompanyAdmin" && companyId.HasValue)
-            {
-                var claimCompanyId = User.FindFirst("company_id")?.Value;
-                return Guid.TryParse(claimCompanyId, out var cid) && cid == companyId.Value;
-            }
+            // CompanyAdmin can manage their specific company within the same tenant
+            if (companyId.HasValue && _db.UserMemberships.Any(m =>
+                m.UserId == userId
+                && m.TenantId == tenantId
+                && m.CompanyId == companyId.Value
+                && m.Status == "Active"
+                && m.MembershipRoles.Any(r =>
+                    r.Status == "Active" &&
+                    r.RoleDefinition.Code == "COMPANY_ADMIN")))
+                return true;
 
             return false;
         }

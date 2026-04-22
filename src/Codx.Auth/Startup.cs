@@ -176,23 +176,23 @@ namespace Codx.Auth
                 options.AddPolicy("TenantAdminRole", policy =>
                     policy.RequireAuthenticatedUser()
                           .RequireClaim("tenant_id")
-                          .RequireClaim("workspace_role", "TenantAdmin", "PlatformAdministrator"));
+                          .RequireClaim("workspace_role", "TENANT_ADMIN", "TENANT_OWNER"));
 
                 options.AddPolicy("CompanyAdminRole", policy =>
                     policy.RequireAuthenticatedUser()
                           .RequireClaim("company_id")
-                          .RequireClaim("workspace_role", "CompanyAdmin", "TenantAdmin", "PlatformAdministrator"));
+                          .RequireClaim("workspace_role", "COMPANY_ADMIN", "TENANT_ADMIN", "TENANT_OWNER"));
 
                 options.AddPolicy("TenantManagerRole", policy =>
                     policy.RequireAuthenticatedUser()
                           .RequireClaim("tenant_id")
-                          .RequireClaim("workspace_role", "TenantManager", "TenantAdmin", "PlatformAdministrator"));
+                          .RequireClaim("workspace_role", "TENANT_MANAGER", "TENANT_ADMIN", "TENANT_OWNER"));
 
                 // Allows TenantAdmin, CompanyAdmin, and PlatformAdministrator.
                 // Tenant/company scope enforcement is performed within each controller action.
                 options.AddPolicy("TenantOrCompanyAdmin", policy =>
                     policy.RequireAuthenticatedUser()
-                          .RequireClaim("workspace_role", "CompanyAdmin", "TenantAdmin", "PlatformAdministrator"));
+                          .RequireClaim("workspace_role", "COMPANY_ADMIN", "TENANT_ADMIN", "TENANT_OWNER"));
             });
 
             // Add CORS services

@@ -1,6 +1,8 @@
 using Codx.Auth.Data.Contexts;
 using Codx.Auth.Data.Entities.AspNet;
 using Codx.Auth.Data.Entities.Enterprise;
+using Codx.Auth.Extensions;
+using Codx.Auth.Services;
 using Codx.Auth.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -18,11 +20,13 @@ namespace Codx.Auth.Controllers
     {
         private readonly UserDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IAuditService _audit;
 
-        public MembershipsController(UserDbContext db, UserManager<ApplicationUser> userManager)
+        public MembershipsController(UserDbContext db, UserManager<ApplicationUser> userManager, IAuditService audit)
         {
             _db = db;
             _userManager = userManager;
+            _audit = audit;
         }
 
         // GET /memberships?tenantId=...&companyId=...
@@ -78,6 +82,30 @@ namespace Codx.Auth.Controllers
                 .ToListAsync();
 
             ViewBag.AvailableRoles = availableRoles;
+
+            // For company-scoped memberships: load applications + existing app role assignments
+            if (membership.CompanyId.HasValue)
+            {
+                var applications = await _db.EnterpriseApplications
+                    .Where(a => a.IsActive)
+                    .Include(a => a.Roles)
+                    .OrderBy(a => a.DisplayName)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                var appRoleAssignments = await _db.UserApplicationRoles
+                    .Where(uar =>
+                        uar.UserId == membership.UserId &&
+                        uar.TenantId == membership.TenantId &&
+                        uar.CompanyId == membership.CompanyId.Value)
+                    .Include(uar => uar.Role)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                ViewBag.Applications = applications;
+                ViewBag.AppRoleAssignments = appRoleAssignments;
+            }
+
             return View(membership);
         }
 
@@ -192,6 +220,113 @@ namespace Codx.Auth.Controllers
             _db.UserMembershipRoles.Remove(role);
             await _db.SaveChangesAsync();
 
+            return RedirectToAction("Details", new { id });
+        }
+
+        // POST /memberships/{id}/app-roles/assign
+        [HttpPost("{id}/app-roles/assign")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AssignAppRole(Guid id, string applicationId, Guid roleId)
+        {
+            var membership = await _db.UserMemberships.FindAsync(id);
+            if (membership == null) return NotFound();
+
+            if (!membership.CompanyId.HasValue)
+                return BadRequest("Application roles can only be assigned on company-scoped memberships.");
+
+            if (!IsAuthorizedForTenant(membership.TenantId, membership.CompanyId))
+                return Forbid();
+
+            // Validate role belongs to app and is active
+            var roleValid = await _db.EnterpriseApplicationRoles
+                .AnyAsync(r => r.Id == roleId && r.ApplicationId == applicationId && r.IsActive);
+            if (!roleValid)
+            {
+                TempData["Success"] = null;
+                TempData["AppRoleError"] = "Selected role not found or inactive.";
+                return RedirectToAction("Details", new { id });
+            }
+
+            // Check for duplicate
+            var duplicate = await _db.UserApplicationRoles.AnyAsync(uar =>
+                uar.UserId == membership.UserId &&
+                uar.TenantId == membership.TenantId &&
+                uar.CompanyId == membership.CompanyId.Value &&
+                uar.ApplicationId == applicationId &&
+                uar.RoleId == roleId);
+            if (duplicate)
+            {
+                TempData["AppRoleError"] = "This role is already assigned to the user.";
+                return RedirectToAction("Details", new { id });
+            }
+
+            var actorIdStr = User.FindFirst("sub")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            Guid.TryParse(actorIdStr, out var actorId);
+
+            var assignment = new UserApplicationRole
+            {
+                Id = Guid.NewGuid(),
+                UserId = membership.UserId,
+                TenantId = membership.TenantId,
+                CompanyId = membership.CompanyId.Value,
+                ApplicationId = applicationId,
+                RoleId = roleId,
+                AssignedAt = DateTime.UtcNow,
+                AssignedByUserId = actorId
+            };
+
+            _db.UserApplicationRoles.Add(assignment);
+            await _db.SaveChangesAsync();
+
+            await _audit.LogAsync(
+                "ApplicationRoleAssigned",
+                userId: membership.UserId,
+                actorUserId: actorId,
+                tenantId: membership.TenantId,
+                companyId: membership.CompanyId,
+                resourceType: "UserApplicationRole",
+                resourceId: assignment.Id.ToString());
+
+            TempData["Success"] = "Application role assigned.";
+            return RedirectToAction("Details", new { id });
+        }
+
+        // POST /memberships/{id}/app-roles/{assignmentId}/remove
+        [HttpPost("{id}/app-roles/{assignmentId}/remove")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveAppRole(Guid id, Guid assignmentId)
+        {
+            var assignment = await _db.UserApplicationRoles.FindAsync(assignmentId);
+            if (assignment == null) return NotFound();
+
+            // Verify the assignment belongs to the membership's user/tenant/company
+            var membership = await _db.UserMemberships.FindAsync(id);
+            if (membership == null) return NotFound();
+
+            if (assignment.UserId != membership.UserId ||
+                assignment.TenantId != membership.TenantId ||
+                assignment.CompanyId != membership.CompanyId)
+                return Forbid();
+
+            if (!IsAuthorizedForTenant(membership.TenantId, membership.CompanyId))
+                return Forbid();
+
+            var actorIdStr = User.FindFirst("sub")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            Guid.TryParse(actorIdStr, out var actorId);
+
+            _db.UserApplicationRoles.Remove(assignment);
+            await _db.SaveChangesAsync();
+
+            await _audit.LogAsync(
+                "ApplicationRoleRevoked",
+                userId: assignment.UserId,
+                actorUserId: actorId,
+                tenantId: assignment.TenantId,
+                companyId: assignment.CompanyId,
+                resourceType: "UserApplicationRole",
+                resourceId: assignmentId.ToString());
+
+            TempData["Success"] = "Application role removed.";
             return RedirectToAction("Details", new { id });
         }
 
@@ -460,7 +595,8 @@ namespace Codx.Auth.Controllers
 
                 // Prevent privilege escalation / scope violation: validate submitted roles
                 // are within the set that was offered to this caller.
-                if (isTenantOwner || viewModel.TenantScopeOnly)
+                // Always enforce for any non-PlatformAdmin — TenantOwner, TenantAdmin, CompanyAdmin, etc.
+                if (!isPlatformAdmin)
                 {
                     var allowedRoleIds = availableRoles.Select(r => r.Id).ToHashSet();
                     if (viewModel.SelectedRoleIds.Any(rid => !allowedRoleIds.Contains(rid)))
@@ -592,21 +728,30 @@ namespace Codx.Auth.Controllers
         {
             if (User.IsInRole("PlatformAdministrator")) return true;
 
-            if (IsTenantOwnerForTenant(tenantId)) return true;
+            var userId = User.GetUserId();
+            if (userId == Guid.Empty) return false;
 
-            var workspaceRole = User.FindFirst("workspace_role")?.Value;
+            // TenantOwner or TenantAdmin can manage anything within their tenant
+            if (_db.UserMemberships.Any(m =>
+                m.UserId == userId
+                && m.TenantId == tenantId
+                && m.CompanyId == null
+                && m.Status == "Active"
+                && m.MembershipRoles.Any(r =>
+                    r.Status == "Active" &&
+                    (r.RoleDefinition.Code == "TENANT_OWNER" || r.RoleDefinition.Code == "TENANT_ADMIN"))))
+                return true;
 
-            if (workspaceRole == "TenantAdmin")
-            {
-                var claimTenantId = User.FindFirst("tenant_id")?.Value;
-                return Guid.TryParse(claimTenantId, out var tid) && tid == tenantId;
-            }
-
-            if (workspaceRole == "CompanyAdmin" && companyId.HasValue)
-            {
-                var claimCompanyId = User.FindFirst("company_id")?.Value;
-                return Guid.TryParse(claimCompanyId, out var cid) && cid == companyId.Value;
-            }
+            // CompanyAdmin can manage their specific company within the same tenant
+            if (companyId.HasValue && _db.UserMemberships.Any(m =>
+                m.UserId == userId
+                && m.TenantId == tenantId
+                && m.CompanyId == companyId.Value
+                && m.Status == "Active"
+                && m.MembershipRoles.Any(r =>
+                    r.Status == "Active" &&
+                    r.RoleDefinition.Code == "COMPANY_ADMIN")))
+                return true;
 
             return false;
         }

@@ -1,6 +1,7 @@
 using Codx.Auth.Data.Entities.Enterprise;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace Codx.Auth.ViewModels.Applications
 {
@@ -8,6 +9,37 @@ namespace Codx.Auth.ViewModels.Applications
     {
         public EnterpriseApplication Application { get; set; }
         public List<string> LinkedClientIds { get; set; } = new List<string>();
+        public List<Codx.Auth.Data.Entities.Enterprise.Tenant> AllTenants { get; set; } = new List<Codx.Auth.Data.Entities.Enterprise.Tenant>();
+    }
+
+    public class UserAssignmentRow
+    {
+        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
+        public string UserEmail { get; set; }
+        public string UserDisplayName { get; set; }
+        public Guid RoleId { get; set; }
+        public string RoleName { get; set; }
+        public DateTime AssignedAt { get; set; }
+        public Guid AssignedByUserId { get; set; }
+        public string AssignedByEmail { get; set; }
+    }
+
+    public class AssignUserRoleViewModel
+    {
+        public string AppId { get; set; }
+
+        [Required]
+        public Guid TenantId { get; set; }
+
+        [Required]
+        public Guid CompanyId { get; set; }
+
+        [Required]
+        public Guid UserId { get; set; }
+
+        [Required]
+        public Guid RoleId { get; set; }
     }
 
     public class ApplicationAddViewModel

@@ -112,6 +112,38 @@ namespace Codx.Auth.Controllers.API
                 roles = workspaceRoles
             });
         }
+        /// <summary>
+        /// Returns all users who have an active company-scoped membership for the given company.
+        /// Used by the Application User Assignments tab in the admin UI to populate the user picker.
+        /// </summary>
+        [HttpGet("/api/v1/companies/{companyId}/members")]
+        public async Task<IActionResult> GetCompanyMembers(Guid companyId, [FromQuery] Guid tenantId)
+        {
+            // Validate company belongs to tenant
+            var companyExists = await _db.Companies
+                .AnyAsync(c => c.Id == companyId && c.TenantId == tenantId);
+            if (!companyExists)
+                return Problem(detail: "Company not found for the specified tenant.", statusCode: 404);
+
+            var members = await _db.UserMemberships
+                .Where(m =>
+                    m.CompanyId == companyId &&
+                    m.TenantId == tenantId &&
+                    m.Status == "Active")
+                .Include(m => m.User)
+                .AsNoTracking()
+                .Select(m => new
+                {
+                    userId = m.UserId,
+                    email = m.User.Email,
+                    displayName = m.User.UserName ?? m.User.Email
+                })
+                .Distinct()
+                .OrderBy(m => m.email)
+                .ToListAsync();
+
+            return Ok(members);
+        }
     }
 }
 
