@@ -1,11 +1,14 @@
 ﻿using Codx.Auth.Data.Contexts;
 using Codx.Auth.Data.Entities.AspNet;
+using Codx.Auth.Data.Entities.Enterprise;
 using Codx.Auth.Services;
 using Duende.IdentityServer.Models;
 using Duende.IdentityServer.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,21 +22,27 @@ namespace Codx.Auth.Extensions
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IWorkspaceContextAccessor _workspaceContext;
         private readonly ITenantResolver _tenantResolver;
+        private readonly IHttpContextAccessor _httpCtx;
         private readonly bool _workspaceContextEnabled;
         private readonly UserDbContext _userDb;
+        private readonly ILogger<CustomProfileService> _logger;
 
         public CustomProfileService(
             UserManager<ApplicationUser> userManager,
             IWorkspaceContextAccessor workspaceContext,
             ITenantResolver tenantResolver,
+            IHttpContextAccessor httpCtx,
             IConfiguration configuration,
-            UserDbContext userDb)
+            UserDbContext userDb,
+            ILogger<CustomProfileService> logger)
         {
             _userManager = userManager;
             _workspaceContext = workspaceContext;
             _tenantResolver = tenantResolver;
+            _httpCtx = httpCtx;
             _workspaceContextEnabled = configuration.GetValue<bool>("EnableWorkspaceContext");
             _userDb = userDb;
+            _logger = logger;
         }
 
         public async Task GetProfileDataAsync(ProfileDataRequestContext context)
@@ -260,27 +269,77 @@ namespace Codx.Auth.Extensions
             return string.Join(" ", parts).Trim();
         }
 
-        /// <summary>
-        /// Populates IWorkspaceContextAccessor from the active WorkspaceSession in the DB.
-        /// Used as a fallback when the in-memory accessor is empty because Duende IdentityServer
-        /// resolves IProfileService in a separate DI scope from ICustomTokenRequestValidator.
+        /// Populates IWorkspaceContextAccessor from the WorkspaceContextSnapshot that
+        /// WorkspaceContextValidator stored in HttpContext.Items during this HTTP request.
+        ///
+        /// Why not IWorkspaceContextAccessor directly?
+        ///   Duende IdentityServer resolves ICustomTokenRequestValidator and IProfileService
+        ///   in separate child DI scopes (siblings, not parent-child). The scoped
+        ///   IWorkspaceContextAccessor is therefore a DIFFERENT instance in each component.
+        ///
+        /// Why not a session-ID DB lookup?
+        ///   The validator's DbContext (scope A) commits the new WorkspaceSession, but the
+        ///   profile service's DbContext (scope B) may not see it yet due to EF identity
+        ///   caching or connection-pool visibility gaps under load.
+        ///
+        /// The WorkspaceContextSnapshot stored in HttpContext.Items contains every field
+        /// already resolved by the validator — no DB round-trip is needed.
+        ///
+        /// Safety net: if the snapshot is absent (e.g. Phase-1 token with no workspace
+        /// context, or HttpContext unavailable in tests), fall back to the DB lookup with
+        /// OrderByDescending(CreatedAt) so the newest active session always wins.
         /// </summary>
         private async Task ResolveWorkspaceContextFromDbAsync(
             ApplicationUser user,
             ProfileDataRequestContext context)
         {
+            // Primary path: read the full snapshot written by WorkspaceContextValidator.
+            if (_httpCtx.HttpContext?.Items.TryGetValue(WorkspaceContextKeys.Snapshot, out var snapshotObj) == true
+                && snapshotObj is WorkspaceContextSnapshot snapshot)
+            {
+                _logger.LogDebug(
+                    "WorkspaceContext [snapshot]: userId={UserId} tenantId={TenantId} companyId={CompanyId} sessionId={SessionId}",
+                    snapshot.UserId, snapshot.TenantId, snapshot.CompanyId, snapshot.WorkspaceSessionId);
+
+                _workspaceContext.UserId = snapshot.UserId;
+                _workspaceContext.TenantId = snapshot.TenantId;
+                _workspaceContext.CompanyId = snapshot.CompanyId;
+                _workspaceContext.MembershipId = snapshot.MembershipId;
+                _workspaceContext.WorkspaceContextType = snapshot.WorkspaceContextType;
+                _workspaceContext.WorkspaceSessionId = snapshot.WorkspaceSessionId;
+                _workspaceContext.WorkspaceRoleCodes = snapshot.WorkspaceRoleCodes;
+                return;
+            }
+
+            // Fallback: snapshot absent — query the most-recently created active session.
+            _logger.LogDebug(
+                "WorkspaceContext [db-fallback]: no snapshot in HttpContext.Items (HttpContext={HasHttpCtx}), querying DB for userId={UserId}",
+                _httpCtx.HttpContext != null, user.Id);
+
             var clientId = context.Client?.ClientId;
             if (string.IsNullOrWhiteSpace(clientId)) return;
 
             var session = await _userDb.WorkspaceSessions
                 .AsNoTracking()
-                .FirstOrDefaultAsync(s =>
+                .Where(s =>
                     s.UserId == user.Id &&
                     s.ClientId == clientId &&
                     s.Status == "Active" &&
-                    s.ExpiresAt > DateTime.UtcNow);
+                    s.ExpiresAt > DateTime.UtcNow)
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
 
-            if (session == null) return;
+            if (session == null)
+            {
+                _logger.LogDebug(
+                    "WorkspaceContext [db-fallback]: no active session found for userId={UserId} clientId={ClientId}",
+                    user.Id, clientId);
+                return;
+            }
+
+            _logger.LogDebug(
+                "WorkspaceContext [db-fallback]: found session {SessionId} tenantId={TenantId} companyId={CompanyId}",
+                session.Id, session.TenantId, session.CompanyId);
 
             var membership = await _userDb.UserMemberships
                 .AsNoTracking()

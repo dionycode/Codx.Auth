@@ -2,6 +2,7 @@ using Codx.Auth.Data.Contexts;
 using Codx.Auth.Data.Entities.Enterprise;
 using Codx.Auth.Services;
 using Duende.IdentityServer.Validation;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -28,6 +29,39 @@ namespace Codx.Auth.Extensions
     /// Controlled by the "EnableWorkspaceContext" feature flag. When false the validator
     /// is a no-op and the legacy path in CustomProfileService takes over.
     /// </summary>
+    /// <summary>
+    /// Complete workspace context resolved by WorkspaceContextValidator.
+    /// Stored in HttpContext.Items[WorkspaceContextKeys.Snapshot] to bridge the DI scope
+    /// boundary between the validator and CustomProfileService.
+    ///
+    /// Duende IdentityServer resolves ICustomTokenRequestValidator and IProfileService in
+    /// separate child DI scopes (both are children of the root, not the HTTP request scope).
+    /// IWorkspaceContextAccessor (scoped) is therefore a DIFFERENT instance in each component.
+    /// HttpContext.Items is shared for the lifetime of the HTTP request regardless of DI
+    /// scope, making it the only reliable cross-component channel within a token request.
+    ///
+    /// Storing the full snapshot (not just a session ID + DB round-trip) eliminates:
+    ///   - EF Core change-tracker visibility gaps between the two scopes' DbContexts
+    ///   - Any race between SaveChangesAsync commit and the profile-service DB query
+    ///   - An extra database round-trip per token issuance
+    /// </summary>
+    internal sealed class WorkspaceContextSnapshot
+    {
+        public Guid UserId { get; init; }
+        public Guid TenantId { get; init; }
+        public Guid? CompanyId { get; init; }
+        public Guid MembershipId { get; init; }
+        public string WorkspaceContextType { get; init; }
+        public Guid WorkspaceSessionId { get; init; }
+        public IReadOnlyList<string> WorkspaceRoleCodes { get; init; }
+    }
+
+    internal static class WorkspaceContextKeys
+    {
+        /// <summary>Key for the WorkspaceContextSnapshot stored in HttpContext.Items.</summary>
+        internal const string Snapshot = "Codx.Auth.WorkspaceContext";
+    }
+
     public class WorkspaceContextValidator : ICustomTokenRequestValidator
     {
         private readonly UserDbContext _db;
@@ -35,6 +69,7 @@ namespace Codx.Auth.Extensions
         private readonly IWorkspaceContextAccessor _accessor;
         private readonly IWorkspaceSessionStore _sessionStore;
         private readonly IAuditService _audit;
+        private readonly IHttpContextAccessor _httpCtx;
         private readonly ILogger<WorkspaceContextValidator> _logger;
         private readonly bool _enabled;
 
@@ -44,6 +79,7 @@ namespace Codx.Auth.Extensions
             IWorkspaceContextAccessor accessor,
             IWorkspaceSessionStore sessionStore,
             IAuditService audit,
+            IHttpContextAccessor httpCtx,
             IConfiguration configuration,
             ILogger<WorkspaceContextValidator> logger)
         {
@@ -52,6 +88,7 @@ namespace Codx.Auth.Extensions
             _accessor = accessor;
             _sessionStore = sessionStore;
             _audit = audit;
+            _httpCtx = httpCtx;
             _logger = logger;
             _enabled = configuration.GetValue<bool>("EnableWorkspaceContext");
         }
@@ -125,17 +162,7 @@ namespace Codx.Auth.Extensions
                                 (umr, wrd) => wrd.Code)
                             .ToListAsync();
 
-                        _accessor.UserId = userId;
-                        _accessor.TenantId = existingSession.TenantId;
-                        _accessor.CompanyId = existingSession.CompanyId;
-                        _accessor.MembershipId = existingMembership.Id;
-                        _accessor.WorkspaceContextType = existingSession.WorkspaceContextType;
-                        _accessor.WorkspaceRoleCodes = existingRoleCodes.AsReadOnly();
-
                         // Renew the session so it stays alive across back-to-back token refreshes.
-                        // Without this, a session created with ExpiresAt = now + access_token_lifetime
-                        // (e.g. 5 min) would expire before the next refresh cycle, causing the
-                        // validator to fall through to Phase 1 and drop all workspace claims.
                         await _sessionStore.RevokeAllForUserClientAsync(userId, clientId);
                         var sessionLifetimeSecs = request.Client?.AbsoluteRefreshTokenLifetime > 0
                             ? request.Client.AbsoluteRefreshTokenLifetime
@@ -153,7 +180,31 @@ namespace Codx.Auth.Extensions
                             CreatedAt = DateTime.UtcNow
                         };
                         await _sessionStore.CreateAsync(renewedSession);
-                        _accessor.WorkspaceSessionId = renewedSession.Id;
+
+                        var renewedSnapshot = new WorkspaceContextSnapshot
+                        {
+                            UserId = userId,
+                            TenantId = existingSession.TenantId,
+                            CompanyId = existingSession.CompanyId,
+                            MembershipId = existingMembership.Id,
+                            WorkspaceContextType = existingSession.WorkspaceContextType,
+                            WorkspaceSessionId = renewedSession.Id,
+                            WorkspaceRoleCodes = existingRoleCodes.AsReadOnly()
+                        };
+
+                        _accessor.UserId = renewedSnapshot.UserId;
+                        _accessor.TenantId = renewedSnapshot.TenantId;
+                        _accessor.CompanyId = renewedSnapshot.CompanyId;
+                        _accessor.MembershipId = renewedSnapshot.MembershipId;
+                        _accessor.WorkspaceContextType = renewedSnapshot.WorkspaceContextType;
+                        _accessor.WorkspaceSessionId = renewedSnapshot.WorkspaceSessionId;
+                        _accessor.WorkspaceRoleCodes = renewedSnapshot.WorkspaceRoleCodes;
+
+                        // Bridge DI scope gap — store full snapshot in HttpContext.Items so
+                        // CustomProfileService reads it directly without a second DB round-trip.
+                        if (_httpCtx.HttpContext != null)
+                            _httpCtx.HttpContext.Items[WorkspaceContextKeys.Snapshot] = renewedSnapshot;
+
                         return;
                     }
                 }
@@ -177,7 +228,7 @@ namespace Codx.Auth.Extensions
             {
                 await _audit.LogAsync("TokenIssuanceFailed", userId: userId, tenantId: tenantId,
                     details: "Tenant not found or inactive", clientId: clientId);
-                Fail(context, "Requested tenant does not exist or is not active.");
+                Fail(context, "access_denied");
                 return;
             }
 
@@ -187,7 +238,7 @@ namespace Codx.Auth.Extensions
             {
                 if (!Guid.TryParse(companyIdStr, out var parsedCompanyId))
                 {
-                    Fail(context, "company_id must be a valid GUID.");
+                    Fail(context, "invalid_request");
                     return;
                 }
                 companyId = parsedCompanyId;
@@ -204,7 +255,7 @@ namespace Codx.Auth.Extensions
                     await _audit.LogAsync("TokenIssuanceFailed", userId: userId, tenantId: tenantId,
                         companyId: companyId, details: "Company does not belong to requested tenant",
                         clientId: clientId);
-                    Fail(context, "Requested company does not belong to the specified tenant.");
+                    Fail(context, "access_denied");
                     return;
                 }
             }
@@ -221,7 +272,7 @@ namespace Codx.Auth.Extensions
             {
                 await _audit.LogAsync("TokenIssuanceFailed", userId: userId, tenantId: tenantId,
                     companyId: companyId, details: "No active membership found", clientId: clientId);
-                Fail(context, "No active membership found for the requested workspace context.");
+                Fail(context, "access_denied");
                 return;
             }
 
@@ -282,14 +333,32 @@ namespace Codx.Auth.Extensions
             // without waiting for an admin to manually grant them a role.
             await AutoAssignDefaultRolesAsync(userId, tenantId, companyId, request);
 
-            // --- Populate the scoped accessor for CustomProfileService ---
-            _accessor.UserId = userId;
-            _accessor.TenantId = tenantId;
-            _accessor.CompanyId = companyId;
-            _accessor.MembershipId = membership.Id;
-            _accessor.WorkspaceContextType = workspaceContextType;
-            _accessor.WorkspaceSessionId = session.Id;
-            _accessor.WorkspaceRoleCodes = roleCodes.AsReadOnly();
+            // Build snapshot once — used for both the scoped accessor (same DI scope, if any)
+            // and HttpContext.Items (reliable cross-scope bridge for CustomProfileService).
+            var snapshot = new WorkspaceContextSnapshot
+            {
+                UserId = userId,
+                TenantId = tenantId,
+                CompanyId = companyId,
+                MembershipId = membership.Id,
+                WorkspaceContextType = workspaceContextType,
+                WorkspaceSessionId = session.Id,
+                WorkspaceRoleCodes = roleCodes.AsReadOnly()
+            };
+
+            // Populate the scoped accessor (works when validator and profile service share a scope).
+            _accessor.UserId = snapshot.UserId;
+            _accessor.TenantId = snapshot.TenantId;
+            _accessor.CompanyId = snapshot.CompanyId;
+            _accessor.MembershipId = snapshot.MembershipId;
+            _accessor.WorkspaceContextType = snapshot.WorkspaceContextType;
+            _accessor.WorkspaceSessionId = snapshot.WorkspaceSessionId;
+            _accessor.WorkspaceRoleCodes = snapshot.WorkspaceRoleCodes;
+
+            // Bridge DI scope gap — store full snapshot in HttpContext.Items so
+            // CustomProfileService reads it directly without a second DB round-trip.
+            if (_httpCtx.HttpContext != null)
+                _httpCtx.HttpContext.Items[WorkspaceContextKeys.Snapshot] = snapshot;
 
             _logger.LogDebug(
                 "WorkspaceContext resolved: userId={UserId} tenantId={TenantId} companyId={CompanyId} roles=[{Roles}]",

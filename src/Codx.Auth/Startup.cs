@@ -41,6 +41,8 @@ namespace Codx.Auth
 
             services.AddAutoMapper(typeof(ApplicationProfile));
 
+            services.AddHttpContextAccessor();
+
             services.AddDbContext<UserDbContext>(options => options.UseSqlServer(connectionString));
 
            services.AddTransient<IFilterService, FilterService>();
