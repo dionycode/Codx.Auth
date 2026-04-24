@@ -23,10 +23,11 @@ namespace Codx.Auth.Controllers.API
         }
 
         /// <summary>
-        /// Returns all active workspace memberships for the authenticated user.
-        /// Source of truth for determining which workspaces/tenants a user may access.
-        /// Called after initial login (no workspace context required) so the SPA can
-        /// present a workspace selector to the user.
+        /// Returns all active company-scoped workspace memberships for the authenticated user.
+        /// Only includes memberships where the membership is Active, the company is Active,
+        /// and the tenant is Active. Tenant-scoped memberships (CompanyId = null) are excluded.
+        /// Source of truth for determining which workspaces a user may select in the SPA.
+        /// Called after initial login (no workspace context required).
         /// </summary>
         [HttpGet("/api/v1/memberships")]
         public async Task<IActionResult> GetMemberships()
@@ -36,7 +37,11 @@ namespace Codx.Auth.Controllers.API
                 return Unauthorized();
 
             var memberships = await _db.UserMemberships
-                .Where(m => m.UserId == userId && m.Status == "Active")
+                .Where(m => m.UserId == userId
+                         && m.Status == "Active"
+                         && m.CompanyId.HasValue
+                         && m.Tenant.Status == "Active"
+                         && m.Company.Status == "Active")
                 .Include(m => m.Tenant)
                 .Include(m => m.Company)
                 .Include(m => m.MembershipRoles)
