@@ -14,7 +14,7 @@ using Codx.Auth.Data.Entities.Enterprise;
 
 namespace Codx.Auth.Controllers
 {
-    [Authorize(Policy = "IdentityServerAdmin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public class TenantManagersController : Controller
     {
         protected readonly UserDbContext _userdbcontext;

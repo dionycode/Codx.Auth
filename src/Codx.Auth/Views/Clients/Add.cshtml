@@ -11,7 +11,7 @@
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="@Url.Action("Index","Home")">Home</a></li>
         <li class="breadcrumb-item"><a href="@Url.Action("Index","Clients")">Clients</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Add</li>
+        <li class="breadcrumb-item active" aria-current="page">Add Client</li>
     </ol>
 </nav>
 
@@ -46,6 +46,26 @@
                     <div class="form-group">
                         <label>Description</label>
                         <input asp-for="@Model.Description" class="form-control" />
+                    </div>
+
+                    <div class="form-group">
+                        <label asp-for="@Model.ApplicationId">Application (optional)</label>
+                        <select asp-for="@Model.ApplicationId" class="form-control">
+                            <option value="">— None —</option>
+                            @if (ViewBag.Applications != null)
+                            {
+                                foreach (var app in (System.Collections.IEnumerable)ViewBag.Applications)
+                                {
+                                    var appItem = (dynamic)app;
+                                    <option value="@appItem.Id">@appItem.DisplayName (@appItem.Id)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input asp-for="@Model.AllowSelfRegistration" class="form-check-input" />
+                        <label class="form-check-label" asp-for="@Model.AllowSelfRegistration">Allow Self-Registration</label>
                     </div>
 
                     <div class="form-group">

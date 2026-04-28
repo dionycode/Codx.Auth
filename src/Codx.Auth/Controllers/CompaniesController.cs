@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Codx.Auth.Data.Contexts;
 using Codx.Auth.Data.Entities.Enterprise;
 using Codx.Auth.Extensions;
@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace Codx.Auth.Controllers
 {
-    [Authorize(Policy = "IdentityServerAdmin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public class CompaniesController : Controller
     {
         private readonly UserDbContext _context;
@@ -38,18 +38,24 @@ namespace Codx.Auth.Controllers
             });
         }
 
+        [HttpGet]
         public IActionResult Details(Guid id) 
         {
-            var record = _context.Companies.FirstOrDefault(o => o.Id == id);
+            var record = _context.Companies.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
+
+            if (record == null) return NotFound();
 
             var viewModel = _mapper.Map<CompanyDetailsViewModel>(record);
 
             return View(viewModel);
         }
 
+        [HttpGet]
         public async Task<IActionResult> Add(Guid tenantid)
         {
-            var tenant = await _context.Tenants.FirstOrDefaultAsync(o => o.Id == tenantid);
+            var tenant = await _context.Tenants.FirstOrDefaultAsync(o => o.Id == tenantid && !o.IsDeleted);
+
+            if (tenant == null) return NotFound();
 
             var viewModel = new CompanyAddViewModel
             {
@@ -86,9 +92,12 @@ namespace Codx.Auth.Controllers
 
         }
 
+        [HttpGet]
         public async Task<IActionResult> Edit(Guid id)
         {
-            var record = _context.Companies.FirstOrDefault(o => o.Id == id);
+            var record = _context.Companies.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
+
+            if (record == null) return NotFound();
 
             var viewModel = _mapper.Map<CompanyEditViewModel>(record);
 
@@ -98,17 +107,22 @@ namespace Codx.Auth.Controllers
         [HttpPost]
         public async Task<IActionResult> Edit(CompanyEditViewModel viewModel)
         {
-            var isRecordFound = await _context.Companies.AsNoTracking().AnyAsync(u => u.Id == viewModel.Id);
+            var record = await _context.Companies.FirstOrDefaultAsync(u => u.Id == viewModel.Id && !u.IsDeleted);
 
-            if (ModelState.IsValid && isRecordFound)
+            if (ModelState.IsValid && record != null)
             {
                 var userId = User.GetUserId();
 
-                var record = _mapper.Map<Company>(viewModel);
+                record.Name = viewModel.Name;
+                record.Email = viewModel.Email;
+                record.Phone = viewModel.Phone;
+                record.Address = viewModel.Address;
+                record.Logo = viewModel.Logo;
+                record.Theme = viewModel.Theme;
+                record.Description = viewModel.Description;
                 record.UpdatedAt = DateTime.Now;
                 record.UpdatedBy = userId;
 
-                _context.Companies.Update(record);
                 var result = await _context.SaveChangesAsync().ConfigureAwait(false);
 
                 if (result > 0)
@@ -125,7 +139,9 @@ namespace Codx.Auth.Controllers
         [HttpGet]
         public async Task<IActionResult> Delete(Guid id)
         {
-            var record = _context.Companies.FirstOrDefault(o => o.Id == id);
+            var record = _context.Companies.FirstOrDefault(o => o.Id == id && !o.IsDeleted);
+
+            if (record == null) return NotFound();
 
             var viewModel = _mapper.Map<CompanyEditViewModel>(record);
 
@@ -135,12 +151,13 @@ namespace Codx.Auth.Controllers
         [HttpPost]
         public async Task<IActionResult> Delete(CompanyEditViewModel viewModel)
         {
-            var isRecordFound = _context.Companies.Any(o => o.Id == viewModel.Id);
+            var isRecordFound = _context.Companies.Any(o => o.Id == viewModel.Id && !o.IsDeleted);
             if (ModelState.IsValid && isRecordFound)
             {
-                var record = _context.Companies.FirstOrDefault(o => o.Id == viewModel.Id);
+                var record = _context.Companies.FirstOrDefault(o => o.Id == viewModel.Id && !o.IsDeleted);
                 record.IsDeleted = true;
                 record.IsActive = false;
+                record.Status = "Cancelled";
                 record.UpdatedAt = DateTime.Now;
                 record.UpdatedBy = User.GetUserId();
 

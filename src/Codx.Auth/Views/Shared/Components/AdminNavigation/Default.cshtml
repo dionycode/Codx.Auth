@@ -1,26 +1,32 @@
-﻿@model bool
+@model bool
 
 @if (Model)
 {
-    <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="" asp-controller="Tenants" asp-action="Index">Tenants</a>
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle text-dark" href="#" id="nav-org" role="button"
+           data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Organization
+        </a>
+        <div class="dropdown-menu" aria-labelledby="nav-org">
+            <a class="dropdown-item" asp-area="" asp-controller="Tenants" asp-action="Index">Tenants</a>
+            <a class="dropdown-item" asp-area="" asp-controller="Users" asp-action="Index">Users</a>
+            <a class="dropdown-item" asp-area="" asp-controller="Roles" asp-action="Index">Roles</a>
+        </div>
+    </li>
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle text-dark" href="#" id="nav-ids" role="button"
+           data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Identity Server
+        </a>
+        <div class="dropdown-menu" aria-labelledby="nav-ids">
+            <a class="dropdown-item" asp-area="" asp-controller="Clients" asp-action="Index">Clients</a>
+            <div class="dropdown-divider"></div>
+            <a class="dropdown-item" asp-area="" asp-controller="IdentityResources" asp-action="Index">Identity Resources</a>
+            <a class="dropdown-item" asp-area="" asp-controller="ApiResources" asp-action="Index">Api Resources</a>
+            <a class="dropdown-item" asp-area="" asp-controller="ApiScopes" asp-action="Index">Api Scopes</a>
+        </div>
     </li>
     <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="" asp-controller="Users" asp-action="Index">Users</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="" asp-controller="Roles" asp-action="Index">Roles</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="" asp-controller="IdentityResources" asp-action="Index">Identity Resources</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="" asp-controller="Clients" asp-action="Index">Clients</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="" asp-controller="ApiResources" asp-action="Index">Api Resources</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="" asp-controller="ApiScopes" asp-action="Index">Api Scopes</a>
+        <a class="nav-link text-dark" asp-area="" asp-controller="Applications" asp-action="Index">Applications</a>
     </li>
 }

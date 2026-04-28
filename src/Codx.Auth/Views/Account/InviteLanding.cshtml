@@ -1,0 +1,35 @@
+@model Codx.Auth.ViewModels.Account.InviteLandingViewModel
+
+@{
+    ViewData["Title"] = "You've been invited";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <h2>You've been invited!</h2>
+            <p class="text-muted">Please click the button below to accept your invitation and create your account.</p>
+
+            @* Auto-submit on load for smooth UX, fallback button if JS is disabled. *@
+            <form id="inviteForm" asp-action="ConsumeInvite" asp-controller="Account" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="rawToken" value="@Model.RawToken" />
+                <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+                <noscript>
+                    <button type="submit" class="btn btn-primary btn-lg mt-3">Accept Invitation</button>
+                </noscript>
+            </form>
+
+            <p class="mt-3 text-muted small">You will be redirected automatically&hellip;</p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('inviteForm').submit();
+        });
+    </script>
+}

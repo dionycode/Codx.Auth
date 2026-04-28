@@ -1,0 +1,17 @@
+@{
+    ViewData["Title"] = "Invitation Required";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <h2>Registration by Invitation Only</h2>
+            <p class="text-muted">
+                This application does not allow public self-registration.
+                Please contact your administrator to request an invitation.
+            </p>
+            <a asp-action="Login" asp-controller="Account" class="btn btn-outline-primary mt-3">Back to Sign In</a>
+        </div>
+    </div>
+</div>

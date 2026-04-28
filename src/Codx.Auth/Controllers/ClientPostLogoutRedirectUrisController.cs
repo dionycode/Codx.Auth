@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace Codx.Auth.Controllers
 {
-    [Authorize(Policy = "IdentityServerAdmin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public class ClientPostLogoutRedirectUrisController : Controller
     {
         protected readonly IdentityServerDbContext _dbContext;

@@ -1,0 +1,74 @@
+@model Codx.Auth.ViewModels.Applications.ApplicationRoleEditViewModel
+
+@{
+    ViewData["Title"] = "Edit Role";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index","Home")">Home</a></li>
+        <li class="breadcrumb-item"><a href="@Url.Action("Index","Applications")">Applications</a></li>
+        <li class="breadcrumb-item"><a href="@Url.Action("Details","Applications", new { id=Model.ApplicationId})">@Model.ApplicationName</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Edit Role</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header">
+                Edit Role
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <partial name="_ValidationSummary" />
+                    </div>
+                </div>
+
+                <form method="post" action="@Url.Action("EditRole", new { appId = Model.ApplicationId, roleId = Model.Id })">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="ApplicationId" />
+                    <input type="hidden" asp-for="ApplicationName" />
+
+                    <div class="form-group">
+                        <label asp-for="Name">Role Name</label>
+                        <input class="form-control" asp-for="Name" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label asp-for="Description"></label>
+                        <input class="form-control" asp-for="Description" />
+                    </div>
+
+                    <div class="form-group form-check">
+                        <input type="checkbox" class="form-check-input" asp-for="IsDefault" id="IsDefault" />
+                        <label class="form-check-label" for="IsDefault">
+                            Default Role
+                            <small class="text-muted d-block">Automatically assigned to new members who have no role yet for this application.</small>
+                        </label>
+                    </div>
+
+                    <div class="form-group form-check">
+                        <input type="checkbox" class="form-check-input" asp-for="IsActive" id="IsActive" />
+                        <label class="form-check-label" for="IsActive">
+                            Active
+                            <small class="text-muted d-block">Inactive roles cannot be assigned to new users.</small>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <input type="submit" class="btn btn-primary" value="Save" />
+                        <a asp-action="Details" asp-route-id="@Model.ApplicationId" class="btn btn-secondary ml-2">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

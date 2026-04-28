@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace Codx.Auth.Controllers
 {
-    [Authorize(Policy = "IdentityServerAdmin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public class UsersController : Controller
     {
         protected readonly UserDbContext _userdbcontext;

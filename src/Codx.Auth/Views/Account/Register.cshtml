@@ -12,6 +12,7 @@
 <form asp-action="Register" method="post">
     @* Add this hidden field to preserve returnUrl during form submission *@
     <input type="hidden" asp-for="ReturnUrl" />
+    <input type="hidden" asp-for="IsInviteMode" />
 
     <div class="form-row">
         <div class="form-group col-md-4">
@@ -32,7 +33,15 @@
     </div>
     <div class="form-group">
         <label asp-for="Email"></label>
-        <input class="form-control" asp-for="Email" />
+        @if (Model.IsInviteMode)
+        {
+            <input class="form-control" asp-for="Email" readonly="readonly" />
+            <small class="form-text text-muted">Your email address is pre-filled from your invitation and cannot be changed.</small>
+        }
+        else
+        {
+            <input class="form-control" asp-for="Email" />
+        }
         <span asp-validation-for="Email" class="text-danger"></span>
     </div>
     <div class="form-group">

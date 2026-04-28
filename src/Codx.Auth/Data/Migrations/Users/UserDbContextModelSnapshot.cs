@@ -205,6 +205,60 @@ namespace Codx.Auth.Data.Migrations.Users
                     b.ToTable("TwoFactorCodes");
                 });
 
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.AuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ClientId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("nvarchar(45)");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ResourceId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ResourceType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("UserId", "EventType");
+
+                    b.ToTable("AuditLogs");
+                });
+
             modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.Company", b =>
                 {
                     b.Property<Guid>("Id")
@@ -247,6 +301,10 @@ namespace Codx.Auth.Data.Migrations.Users
                         .HasMaxLength(15)
                         .HasColumnType("nvarchar(15)");
 
+                    b.Property<string>("Status")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
@@ -265,6 +323,137 @@ namespace Codx.Auth.Data.Migrations.Users
                     b.HasIndex("TenantId");
 
                     b.ToTable("Companies");
+                });
+
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.EnterpriseApplication", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("AllowSelfRegistration")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EnterpriseApplications", (string)null);
+                });
+
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.EnterpriseApplicationRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId", "Name")
+                        .IsUnique()
+                        .HasFilter("[ApplicationId] IS NOT NULL");
+
+                    b.ToTable("EnterpriseApplicationRoles", (string)null);
+                });
+
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.Invitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("InviteTokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid>("InvitedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InviteTokenHash");
+
+                    b.ToTable("Invitations");
+                });
+
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.InvitationRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("InvitationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("InvitationId", "RoleId")
+                        .IsUnique();
+
+                    b.ToTable("InvitationRoles");
                 });
 
             modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.Tenant", b =>
@@ -309,6 +498,14 @@ namespace Codx.Auth.Data.Migrations.Users
                         .HasMaxLength(15)
                         .HasColumnType("nvarchar(15)");
 
+                    b.Property<string>("Slug")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Status")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Theme")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -320,6 +517,10 @@ namespace Codx.Auth.Data.Migrations.Users
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique()
+                        .HasFilter("[Slug] IS NOT NULL");
 
                     b.ToTable("Tenants");
                 });
@@ -339,6 +540,44 @@ namespace Codx.Auth.Data.Migrations.Users
                     b.ToTable("TenantManagers");
                 });
 
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.UserApplicationRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("AssignedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("AssignedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("UserId", "TenantId", "CompanyId", "ApplicationId", "RoleId")
+                        .IsUnique()
+                        .HasFilter("[ApplicationId] IS NOT NULL");
+
+                    b.ToTable("UserApplicationRoles");
+                });
+
             modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.UserCompany", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -352,6 +591,156 @@ namespace Codx.Auth.Data.Migrations.Users
                     b.HasIndex("CompanyId");
 
                     b.ToTable("UserCompanies");
+                });
+
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.UserMembership", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("UserId", "TenantId", "CompanyId")
+                        .IsUnique()
+                        .HasFilter("[CompanyId] IS NOT NULL");
+
+                    b.ToTable("UserMemberships");
+                });
+
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.UserMembershipRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("AssignedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("AssignedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("MembershipId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("MembershipId", "RoleId")
+                        .IsUnique()
+                        .HasFilter("[Status] = 'Active'");
+
+                    b.ToTable("UserMembershipRoles");
+                });
+
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.WorkspaceRoleDefinition", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ScopeType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("WorkspaceRoleDefinitions");
+                });
+
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.WorkspaceSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ClientId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("WorkspaceContextType")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("UserId", "Status");
+
+                    b.ToTable("WorkspaceSessions");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -470,6 +859,35 @@ namespace Codx.Auth.Data.Migrations.Users
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.EnterpriseApplicationRole", b =>
+                {
+                    b.HasOne("Codx.Auth.Data.Entities.Enterprise.EnterpriseApplication", "Application")
+                        .WithMany("Roles")
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Application");
+                });
+
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.InvitationRole", b =>
+                {
+                    b.HasOne("Codx.Auth.Data.Entities.Enterprise.Invitation", "Invitation")
+                        .WithMany("InvitationRoles")
+                        .HasForeignKey("InvitationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Codx.Auth.Data.Entities.Enterprise.WorkspaceRoleDefinition", "RoleDefinition")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Invitation");
+
+                    b.Navigation("RoleDefinition");
+                });
+
             modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.TenantManager", b =>
                 {
                     b.HasOne("Codx.Auth.Data.Entities.Enterprise.Tenant", "Tenant")
@@ -489,6 +907,17 @@ namespace Codx.Auth.Data.Migrations.Users
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.UserApplicationRole", b =>
+                {
+                    b.HasOne("Codx.Auth.Data.Entities.Enterprise.EnterpriseApplicationRole", "Role")
+                        .WithMany("UserAssignments")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+                });
+
             modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.UserCompany", b =>
                 {
                     b.HasOne("Codx.Auth.Data.Entities.Enterprise.Company", "Company")
@@ -506,6 +935,51 @@ namespace Codx.Auth.Data.Migrations.Users
                     b.Navigation("Company");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.UserMembership", b =>
+                {
+                    b.HasOne("Codx.Auth.Data.Entities.Enterprise.Company", "Company")
+                        .WithMany("UserMemberships")
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Codx.Auth.Data.Entities.Enterprise.Tenant", "Tenant")
+                        .WithMany("UserMemberships")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Codx.Auth.Data.Entities.AspNet.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.UserMembershipRole", b =>
+                {
+                    b.HasOne("Codx.Auth.Data.Entities.Enterprise.UserMembership", "Membership")
+                        .WithMany("MembershipRoles")
+                        .HasForeignKey("MembershipId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Codx.Auth.Data.Entities.Enterprise.WorkspaceRoleDefinition", "RoleDefinition")
+                        .WithMany("MembershipRoles")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Membership");
+
+                    b.Navigation("RoleDefinition");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -554,6 +1028,23 @@ namespace Codx.Auth.Data.Migrations.Users
             modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.Company", b =>
                 {
                     b.Navigation("UserCompanies");
+
+                    b.Navigation("UserMemberships");
+                });
+
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.EnterpriseApplication", b =>
+                {
+                    b.Navigation("Roles");
+                });
+
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.EnterpriseApplicationRole", b =>
+                {
+                    b.Navigation("UserAssignments");
+                });
+
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.Invitation", b =>
+                {
+                    b.Navigation("InvitationRoles");
                 });
 
             modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.Tenant", b =>
@@ -561,6 +1052,18 @@ namespace Codx.Auth.Data.Migrations.Users
                     b.Navigation("Companies");
 
                     b.Navigation("TenantManagers");
+
+                    b.Navigation("UserMemberships");
+                });
+
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.UserMembership", b =>
+                {
+                    b.Navigation("MembershipRoles");
+                });
+
+            modelBuilder.Entity("Codx.Auth.Data.Entities.Enterprise.WorkspaceRoleDefinition", b =>
+                {
+                    b.Navigation("MembershipRoles");
                 });
 #pragma warning restore 612, 618
         }

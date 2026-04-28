@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Codx.Auth.Data.Contexts;
 using Codx.Auth.ViewModels;
 using Duende.IdentityServer.EntityFramework.Entities;
@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Codx.Auth.Controllers
 {
-    [Authorize(Policy = "IdentityServerAdmin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public class ApiScopesController : Controller
     {
         protected readonly IdentityServerDbContext _dbContext;

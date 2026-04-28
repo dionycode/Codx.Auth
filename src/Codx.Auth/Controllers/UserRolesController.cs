@@ -14,7 +14,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Codx.Auth.Controllers
 {
-    [Authorize(Policy = "IdentityServerAdmin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public class UserRolesController : Controller
     {
 
