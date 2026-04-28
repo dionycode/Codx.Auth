@@ -110,7 +110,8 @@ namespace Codx.Auth.Controllers
                 SameSite = SameSiteMode.Lax,
                 Secure = Request.IsHttps,
                 Expires = DateTimeOffset.UtcNow.AddMinutes(30),
-                IsEssential = true
+                IsEssential = true,
+                Path = "/"
             });
 
             return RedirectToAction("Register", new { returnUrl });

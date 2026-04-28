@@ -124,6 +124,11 @@ namespace Codx.Auth.Controllers.API
         [HttpGet("/api/v1/companies/{companyId}/members")]
         public async Task<IActionResult> GetCompanyMembers(Guid companyId, [FromQuery] Guid tenantId)
         {
+            // Enforce caller's tenant_id claim matches requested tenantId (prevents cross-tenant enumeration)
+            var callerTenantIdStr = User.FindFirst("tenant_id")?.Value;
+            if (!Guid.TryParse(callerTenantIdStr, out var callerTenantId) || callerTenantId != tenantId)
+                return Problem(detail: "Caller's tenant context does not match the requested tenantId.", statusCode: 403);
+
             // Validate company belongs to tenant
             var companyExists = await _db.Companies
                 .AnyAsync(c => c.Id == companyId && c.TenantId == tenantId);

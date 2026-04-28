@@ -398,7 +398,7 @@ namespace Codx.Auth.Controllers
 
         // GET /memberships/GetUserTenantMembershipsTableData?userId=...
         [HttpGet("GetUserTenantMembershipsTableData")]
-        [Authorize(Policy = "IdentityServerAdmin")]
+        [Authorize(Policy = "PlatformAdmin")]
         public IActionResult GetUserTenantMembershipsTableData(Guid userId, string search, string sort, string order, int offset, int limit)
         {
             if (userId == Guid.Empty)
@@ -429,7 +429,7 @@ namespace Codx.Auth.Controllers
 
         // GET /memberships/GetUserCompanyMembershipsTableData?userId=...
         [HttpGet("GetUserCompanyMembershipsTableData")]
-        [Authorize(Policy = "IdentityServerAdmin")]
+        [Authorize(Policy = "PlatformAdmin")]
         public IActionResult GetUserCompanyMembershipsTableData(Guid userId, string search, string sort, string order, int offset, int limit)
         {
             if (userId == Guid.Empty)

@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Codx.Auth.Controllers
 {
-    [Authorize(Policy = "IdentityServerAdmin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public class ApiResourceSecretsController : Controller
     {
         protected readonly IdentityServerDbContext _dbContext;

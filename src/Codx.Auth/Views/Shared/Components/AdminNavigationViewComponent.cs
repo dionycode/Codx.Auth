@@ -15,7 +15,7 @@ namespace Codx.Auth.ViewComponents
 
         public async Task<IViewComponentResult> InvokeAsync()
         {
-            var isAuthorized = await _authorizationService.AuthorizeAsync(UserClaimsPrincipal, "IdentityServerAdmin");
+            var isAuthorized = await _authorizationService.AuthorizeAsync(UserClaimsPrincipal, "PlatformAdmin");
             return View(isAuthorized.Succeeded);
         }
     }

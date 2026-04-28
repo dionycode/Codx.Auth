@@ -156,7 +156,6 @@ namespace Codx.Auth
 
             services.AddAuthorization(options =>
             {
-                options.AddPolicy("IdentityServerAdmin", policy => policy.RequireRole("PlatformAdministrator"));
                 options.AddPolicy(IdentityServerConstants.LocalApi.PolicyName, policy =>
                 {
                     policy.AddAuthenticationSchemes(IdentityServerConstants.LocalApi.AuthenticationScheme);

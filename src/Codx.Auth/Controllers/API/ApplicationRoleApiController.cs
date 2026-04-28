@@ -1,5 +1,6 @@
 using Codx.Auth.Data.Contexts;
 using Codx.Auth.Data.Entities.Enterprise;
+using Codx.Auth.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,10 +19,12 @@ namespace Codx.Auth.Controllers.API
     public class ApplicationRoleApiController : ControllerBase
     {
         private readonly UserDbContext _db;
+        private readonly IAuditService _audit;
 
-        public ApplicationRoleApiController(UserDbContext db)
+        public ApplicationRoleApiController(UserDbContext db, IAuditService audit)
         {
             _db = db;
+            _audit = audit;
         }
 
         // GET /api/v1/applications/{appId}/roles — list available role definitions (for building assignment UI)
@@ -106,6 +109,16 @@ namespace Codx.Auth.Controllers.API
             if (!Guid.TryParse(callerTenantIdStr, out var callerTenantId) || callerTenantId != request.TenantId)
                 return Problem(detail: "Caller's tenant context does not match the requested tenantId.", statusCode: 403);
 
+            // Check for duplicate assignment
+            var duplicate = await _db.UserApplicationRoles.AnyAsync(uar =>
+                uar.UserId == request.UserId &&
+                uar.TenantId == request.TenantId &&
+                uar.CompanyId == request.CompanyId &&
+                uar.ApplicationId == appId &&
+                uar.RoleId == request.RoleId);
+            if (duplicate)
+                return Problem(detail: "This role is already assigned to the specified user.", statusCode: 409);
+
             var assignerIdStr = User.FindFirst("sub")?.Value;
             if (!Guid.TryParse(assignerIdStr, out var assignerId))
                 return Unauthorized();
@@ -124,6 +137,15 @@ namespace Codx.Auth.Controllers.API
 
             _db.UserApplicationRoles.Add(assignment);
             await _db.SaveChangesAsync();
+
+            await _audit.LogAsync(
+                "ApplicationRoleAssigned",
+                userId: request.UserId,
+                actorUserId: assignerId,
+                tenantId: request.TenantId,
+                companyId: request.CompanyId,
+                resourceType: "UserApplicationRole",
+                resourceId: assignment.Id.ToString());
 
             return CreatedAtAction(nameof(List), new { appId, tenantId = request.TenantId, companyId = request.CompanyId },
                 new { assignment.Id });
@@ -151,19 +173,34 @@ namespace Codx.Auth.Controllers.API
             _db.UserApplicationRoles.Remove(assignment);
             await _db.SaveChangesAsync();
 
+            var revokerIdStr = User.FindFirst("sub")?.Value;
+            Guid.TryParse(revokerIdStr, out var revokerId);
+
+            await _audit.LogAsync(
+                "ApplicationRoleRevoked",
+                userId: assignment.UserId,
+                actorUserId: revokerId,
+                tenantId: assignment.TenantId,
+                companyId: assignment.CompanyId,
+                resourceType: "UserApplicationRole",
+                resourceId: id.ToString());
+
             return NoContent();
         }
 
         private static readonly HashSet<string> _adminRoles = new(StringComparer.OrdinalIgnoreCase)
         {
-            "CompanyAdmin", "TenantAdmin", "PlatformAdministrator"
+            "COMPANY_ADMIN", "TENANT_ADMIN", "TENANT_OWNER"
         };
 
-        // Returns true when the caller has at least one qualifying workspace role claim.
+        // Returns true when the caller has at least one qualifying workspace role claim,
+        // or carries the PlatformAdministrator platform_role claim.
         private bool CallerIsWorkspaceAdmin() =>
             User.Claims
                 .Where(c => c.Type == "workspace_role")
-                .Any(c => _adminRoles.Contains(c.Value));
+                .Any(c => _adminRoles.Contains(c.Value))
+            || User.Claims
+                .Any(c => c.Type == "platform_role" && c.Value == "PlatformAdministrator");
     }
 
     public class AssignUserRoleRequest
