@@ -1,0 +1,103 @@
+@model ClientEditViewModel
+
+@{
+    ViewData["Title"] = "Edit Client";
+}
+
+<partial name="_Breadcrumb" view-data='@(new ViewDataDictionary(ViewData) { ["BreadcrumbItems"] = new[] { ("Home", Url.Action("Index","Home")), ("Clients", Url.Action("Index","Clients")), ("Client", Url.Action("Details","Clients", new { id = Model.Id })), ("Edit Client", (string?)null) } })' />
+<partial name="_PageHeading" />
+
+<div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200 px-6 py-8 max-w-3xl">
+    <partial name="_ValidationSummary" />
+
+    <form asp-action="Edit" class="space-y-5">
+        <input type="hidden" asp-for="Id" />
+
+        <h3 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Basic</h3>
+
+        <div><label asp-for="ClientId" class="block text-sm/6 font-medium text-gray-900">Client ID</label><div class="mt-2"><input asp-for="ClientId" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+        <div><label asp-for="ClientName" class="block text-sm/6 font-medium text-gray-900">Client Name</label><div class="mt-2"><input asp-for="ClientName" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+        <div><label asp-for="Description" class="block text-sm/6 font-medium text-gray-900">Description</label><div class="mt-2"><input asp-for="Description" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+        <div><label asp-for="ClientUri" class="block text-sm/6 font-medium text-gray-900">Client URI</label><div class="mt-2"><input asp-for="ClientUri" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+        <div><label asp-for="LogoUri" class="block text-sm/6 font-medium text-gray-900">Logo URI</label><div class="mt-2"><input asp-for="LogoUri" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+
+        <div>
+            <label asp-for="ApplicationId" class="block text-sm/6 font-medium text-gray-900">Application (optional)</label>
+            <div class="mt-2">
+                <select asp-for="ApplicationId" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6">
+                    <option value="">— None —</option>
+                    @if (ViewBag.Applications != null)
+                    {
+                        foreach (var app in (System.Collections.IEnumerable)ViewBag.Applications)
+                        {
+                            var appItem = (dynamic)app;
+                            <option value="@appItem.Id">@appItem.DisplayName (@appItem.Id)</option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
+
+        <h3 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2 pt-2">Behaviour</h3>
+
+        <div class="grid grid-cols-1 gap-y-3 sm:grid-cols-2">
+            <div class="flex items-center gap-x-3"><input asp-for="Enabled" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="Enabled" class="text-sm/6 text-gray-900">Enabled</label></div>
+            <div class="flex items-center gap-x-3"><input asp-for="EnableLocalLogin" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="EnableLocalLogin" class="text-sm/6 text-gray-900">Enable Local Login</label></div>
+            <div class="flex items-center gap-x-3"><input asp-for="AllowOfflineAccess" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="AllowOfflineAccess" class="text-sm/6 text-gray-900">Allow Offline Access</label></div>
+            <div class="flex items-center gap-x-3"><input asp-for="AllowSelfRegistration" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="AllowSelfRegistration" class="text-sm/6 text-gray-900">Allow Self-Registration</label></div>
+            <div class="flex items-center gap-x-3"><input asp-for="RequireClientSecret" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="RequireClientSecret" class="text-sm/6 text-gray-900">Require Client Secret</label></div>
+            <div class="flex items-center gap-x-3"><input asp-for="RequireConsent" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="RequireConsent" class="text-sm/6 text-gray-900">Require Consent</label></div>
+            <div class="flex items-center gap-x-3"><input asp-for="AllowRememberConsent" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="AllowRememberConsent" class="text-sm/6 text-gray-900">Allow Remember Consent</label></div>
+            <div class="flex items-center gap-x-3"><input asp-for="RequirePkce" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="RequirePkce" class="text-sm/6 text-gray-900">Require PKCE</label></div>
+            <div class="flex items-center gap-x-3"><input asp-for="AllowPlainTextPkce" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="AllowPlainTextPkce" class="text-sm/6 text-gray-900">Allow Plain Text PKCE</label></div>
+            <div class="flex items-center gap-x-3"><input asp-for="RequireRequestObject" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="RequireRequestObject" class="text-sm/6 text-gray-900">Require Request Object</label></div>
+            <div class="flex items-center gap-x-3"><input asp-for="AllowAccessTokensViaBrowser" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="AllowAccessTokensViaBrowser" class="text-sm/6 text-gray-900">Allow Access Tokens Via Browser</label></div>
+            <div class="flex items-center gap-x-3"><input asp-for="IncludeJwtId" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="IncludeJwtId" class="text-sm/6 text-gray-900">Include JWT ID</label></div>
+            <div class="flex items-center gap-x-3"><input asp-for="AlwaysIncludeUserClaimsInIdToken" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="AlwaysIncludeUserClaimsInIdToken" class="text-sm/6 text-gray-900">Always Include User Claims In Id Token</label></div>
+            <div class="flex items-center gap-x-3"><input asp-for="AlwaysSendClientClaims" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="AlwaysSendClientClaims" class="text-sm/6 text-gray-900">Always Send Client Claims</label></div>
+            <div class="flex items-center gap-x-3"><input asp-for="UpdateAccessTokenClaimsOnRefresh" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="UpdateAccessTokenClaimsOnRefresh" class="text-sm/6 text-gray-900">Update Access Token Claims On Refresh</label></div>
+            <div class="flex items-center gap-x-3"><input asp-for="NonEditable" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="NonEditable" class="text-sm/6 text-gray-900">Non-Editable</label></div>
+        </div>
+
+        <h3 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2 pt-2">Logout</h3>
+
+        <div class="grid grid-cols-1 gap-y-5 sm:grid-cols-2 sm:gap-x-6">
+            <div class="flex items-center gap-x-3"><input asp-for="FrontChannelLogoutSessionRequired" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="FrontChannelLogoutSessionRequired" class="text-sm/6 text-gray-900">Front Channel Logout Session Required</label></div>
+            <div><label asp-for="FrontChannelLogoutUri" class="block text-sm/6 font-medium text-gray-900">Front Channel Logout URI</label><div class="mt-2"><input asp-for="FrontChannelLogoutUri" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+            <div class="flex items-center gap-x-3"><input asp-for="BackChannelLogoutSessionRequired" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="BackChannelLogoutSessionRequired" class="text-sm/6 text-gray-900">Back Channel Logout Session Required</label></div>
+            <div><label asp-for="BackChannelLogoutUri" class="block text-sm/6 font-medium text-gray-900">Back Channel Logout URI</label><div class="mt-2"><input asp-for="BackChannelLogoutUri" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+        </div>
+
+        <h3 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2 pt-2">Token Lifetimes</h3>
+
+        <div class="grid grid-cols-1 gap-y-5 sm:grid-cols-2 sm:gap-x-6">
+            <div><label asp-for="AccessTokenLifetime" class="block text-sm/6 font-medium text-gray-900">Access Token Lifetime</label><div class="mt-2"><input asp-for="AccessTokenLifetime" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+            <div><label asp-for="AuthorizationCodeLifetime" class="block text-sm/6 font-medium text-gray-900">Authorization Code Lifetime</label><div class="mt-2"><input asp-for="AuthorizationCodeLifetime" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+            <div><label asp-for="ConsentLifetime" class="block text-sm/6 font-medium text-gray-900">Consent Lifetime</label><div class="mt-2"><input asp-for="ConsentLifetime" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+            <div><label asp-for="AbsoluteRefreshTokenLifetime" class="block text-sm/6 font-medium text-gray-900">Absolute Refresh Token Lifetime</label><div class="mt-2"><input asp-for="AbsoluteRefreshTokenLifetime" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+            <div><label asp-for="SlidingRefreshTokenLifetime" class="block text-sm/6 font-medium text-gray-900">Sliding Refresh Token Lifetime</label><div class="mt-2"><input asp-for="SlidingRefreshTokenLifetime" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+            <div><label asp-for="UserSsoLifetime" class="block text-sm/6 font-medium text-gray-900">User SSO Lifetime</label><div class="mt-2"><input asp-for="UserSsoLifetime" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+            <div><label asp-for="DeviceCodeLifetime" class="block text-sm/6 font-medium text-gray-900">Device Code Lifetime</label><div class="mt-2"><input asp-for="DeviceCodeLifetime" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+            <div><label asp-for="IdentityTokenLifetime" class="block text-sm/6 font-medium text-gray-900">Identity Token Lifetime</label><div class="mt-2"><input asp-for="IdentityTokenLifetime" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+        </div>
+
+        <h3 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2 pt-2">Token Settings</h3>
+
+        <div class="grid grid-cols-1 gap-y-5 sm:grid-cols-2 sm:gap-x-6">
+            <div><label asp-for="AccessTokenType" class="block text-sm/6 font-medium text-gray-900">Access Token Type</label><div class="mt-2"><input asp-for="AccessTokenType" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+            <div><label asp-for="RefreshTokenUsage" class="block text-sm/6 font-medium text-gray-900">Refresh Token Usage</label><div class="mt-2"><input asp-for="RefreshTokenUsage" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+            <div><label asp-for="RefreshTokenExpiration" class="block text-sm/6 font-medium text-gray-900">Refresh Token Expiration</label><div class="mt-2"><input asp-for="RefreshTokenExpiration" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+            <div><label asp-for="ClientClaimsPrefix" class="block text-sm/6 font-medium text-gray-900">Client Claims Prefix</label><div class="mt-2"><input asp-for="ClientClaimsPrefix" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+            <div><label asp-for="PairWiseSubjectSalt" class="block text-sm/6 font-medium text-gray-900">Pair-Wise Subject Salt</label><div class="mt-2"><input asp-for="PairWiseSubjectSalt" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+            <div><label asp-for="UserCodeType" class="block text-sm/6 font-medium text-gray-900">User Code Type</label><div class="mt-2"><input asp-for="UserCodeType" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+            <div><label asp-for="AllowedIdentityTokenSigningAlgorithms" class="block text-sm/6 font-medium text-gray-900">Allowed Identity Token Signing Algorithms</label><div class="mt-2"><input asp-for="AllowedIdentityTokenSigningAlgorithms" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+            <div><label asp-for="ProtocolType" class="block text-sm/6 font-medium text-gray-900">Protocol Type</label><div class="mt-2"><input asp-for="ProtocolType" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+        </div>
+
+        <div class="flex gap-x-3 pt-4">
+            <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Save</button>
+            <a asp-action="Details" asp-route-id="@Model.Id" class="rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50">Cancel</a>
+        </div>
+
+    </form>
+</div>

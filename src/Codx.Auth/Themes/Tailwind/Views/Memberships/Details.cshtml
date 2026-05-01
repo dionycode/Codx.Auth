@@ -1,0 +1,228 @@
+@using Codx.Auth.Data.Entities.Enterprise
+@model UserMembership
+
+@{
+    ViewData["Title"] = "Membership Details";
+    var availableRoles = ViewBag.AvailableRoles as List<WorkspaceRoleDefinition>;
+    var applications = ViewBag.Applications as List<EnterpriseApplication>;
+    var appRoleAssignments = ViewBag.AppRoleAssignments as List<UserApplicationRole>;
+    bool isCompanyScoped = Model.CompanyId.HasValue;
+}
+
+<nav aria-label="Breadcrumb" class="mb-4">
+    <ol class="flex items-center gap-x-2 text-sm text-gray-500">
+        <li><a href="@Url.Action("Index","Home")" class="hover:text-gray-700">Home</a></li>
+        <li><span class="mx-1">/</span></li>
+        @if (User.IsInRole("PlatformAdministrator"))
+        {
+            <li><a href="@Url.Action("Index","Tenants")" class="hover:text-gray-700">Tenants</a></li>
+            <li><span class="mx-1">/</span></li>
+            <li><a asp-controller="Tenants" asp-action="Details" asp-route-id="@Model.TenantId" class="hover:text-gray-700">Tenant</a></li>
+            @if (Model.CompanyId.HasValue)
+            {
+                <li><span class="mx-1">/</span></li>
+                <li><a asp-controller="Companies" asp-action="Details" asp-route-id="@Model.CompanyId" class="hover:text-gray-700">Company</a></li>
+            }
+        }
+        else
+        {
+            <li><a href="@Url.Action("Index","MyProfile")" class="hover:text-gray-700">My Profile</a></li>
+            <li><span class="mx-1">/</span></li>
+            <li><a asp-controller="MyProfile" asp-action="ManageTenant" asp-route-id="@Model.TenantId" class="hover:text-gray-700">Tenant</a></li>
+            @if (Model.CompanyId.HasValue)
+            {
+                <li><span class="mx-1">/</span></li>
+                <li><a asp-controller="MyProfile" asp-action="ManageTenantCompanyDetails" asp-route-id="@Model.CompanyId" class="hover:text-gray-700">Company</a></li>
+            }
+        }
+        <li><span class="mx-1">/</span></li>
+        <li><a asp-action="Index" asp-route-tenantId="@Model.TenantId" asp-route-companyId="@Model.CompanyId" class="hover:text-gray-700">Memberships</a></li>
+        <li><span class="mx-1">/</span></li>
+        <li class="text-gray-900 font-medium" aria-current="page">Membership</li>
+    </ol>
+</nav>
+
+<div class="mb-6"><h1 class="text-2xl font-semibold text-gray-900">Membership — @(Model.User?.UserName ?? Model.UserId.ToString())</h1></div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="rounded-md bg-green-50 p-4 ring-1 ring-inset ring-green-600/20 mb-4">
+        <p class="text-sm text-green-800">@TempData["Success"]</p>
+    </div>
+}
+@if (TempData["AppRoleError"] != null)
+{
+    <div class="rounded-md bg-red-50 p-4 ring-1 ring-inset ring-red-600/10 mb-4">
+        <p class="text-sm text-red-800">@TempData["AppRoleError"]</p>
+    </div>
+}
+
+<div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200 px-6 py-6 mb-6">
+    <dl class="divide-y divide-gray-100">
+        <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Tenant</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.Tenant?.Name ?? Model.TenantId.ToString())</dd></div>
+        @if (Model.Company != null)
+        {
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Company</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Company.Name</dd></div>
+        }
+        <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Status</dt><dd class="mt-1 text-sm sm:col-span-2 sm:mt-0"><span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium @(Model.Status == "Active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800")">@Model.Status</span></dd></div>
+        <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Joined</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.JoinedAt.ToLocalTime().ToString("g")</dd></div>
+    </dl>
+    <div class="mt-4 flex gap-x-3">
+        @if (Model.Status == "Active")
+        {
+            <form asp-action="Deactivate" asp-route-id="@Model.Id" method="post" style="display:inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-red-700 shadow-xs ring-1 ring-inset ring-red-300 hover:bg-red-50">Deactivate</button>
+            </form>
+        }
+        else
+        {
+            <form asp-action="Reactivate" asp-route-id="@Model.Id" method="post" style="display:inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-green-700 shadow-xs ring-1 ring-inset ring-green-300 hover:bg-green-50">Reactivate</button>
+            </form>
+        }
+    </div>
+</div>
+
+<div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200 px-6 py-6 mb-6">
+    <h2 class="text-base font-semibold text-gray-900 mb-4">Workspace Roles</h2>
+    <table class="min-w-full divide-y divide-gray-200 mb-4">
+        <thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Role</th><th class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Scope</th><th class="px-4 py-2"></th></tr></thead>
+        <tbody class="divide-y divide-gray-100 bg-white">
+            @foreach (var r in Model.MembershipRoles ?? Enumerable.Empty<UserMembershipRole>())
+            {
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-sm text-gray-900">@(r.RoleDefinition?.DisplayName ?? r.RoleId.ToString())</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">@r.RoleDefinition?.ScopeType</td>
+                    <td class="px-4 py-3 text-right">
+                        <form asp-action="RevokeRole" asp-route-id="@Model.Id" asp-route-roleId="@r.Id" method="post" style="display:inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="text-red-600 hover:text-red-500 text-sm font-medium">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (availableRoles?.Any() == true)
+    {
+        <form asp-action="AddRole" asp-route-id="@Model.Id" method="post" class="flex items-center gap-x-3">
+            @Html.AntiForgeryToken()
+            <select name="roleId" class="rounded-md border-0 py-2 pl-3 pr-8 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600">
+                @foreach (var role in availableRoles)
+                {
+                    <option value="@role.Id">@role.DisplayName (@role.ScopeType)</option>
+                }
+            </select>
+            <button type="submit" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add Role</button>
+        </form>
+    }
+</div>
+
+@if (isCompanyScoped && applications != null)
+{
+    <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200 px-6 py-6 mb-6">
+        <h2 class="text-base font-semibold text-gray-900 mb-4">Application Roles</h2>
+        @if (appRoleAssignments != null && appRoleAssignments.Any())
+        {
+            <table class="min-w-full divide-y divide-gray-200 mb-4">
+                <thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Application</th><th class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Role</th><th class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Assigned At</th><th class="px-4 py-2"></th></tr></thead>
+                <tbody class="divide-y divide-gray-100 bg-white">
+                    @foreach (var a in appRoleAssignments)
+                    {
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 text-sm font-mono text-gray-900">@a.ApplicationId</td>
+                            <td class="px-4 py-3 text-sm"><span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">@(a.Role?.Name ?? a.RoleId.ToString())</span></td>
+                            <td class="px-4 py-3 text-sm text-gray-900">@a.AssignedAt.ToLocalTime().ToString("g")</td>
+                            <td class="px-4 py-3 text-right">
+                                <form asp-action="RemoveAppRole" asp-route-id="@Model.Id" asp-route-assignmentId="@a.Id" method="post" style="display:inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="text-red-600 hover:text-red-500 text-sm font-medium">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p class="text-sm text-gray-500 mb-4">No application roles assigned.</p>
+        }
+        <form asp-action="AssignAppRole" asp-route-id="@Model.Id" method="post" class="flex items-end gap-x-3">
+            @Html.AntiForgeryToken()
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Application</label>
+                <select id="appSelect" name="applicationId" class="rounded-md border-0 py-2 pl-3 pr-8 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600">
+                    <option value="">-- Select Application --</option>
+                    @foreach (var app in applications)
+                    {
+                        <option value="@app.Id">@app.DisplayName</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Role</label>
+                <select id="appRoleSelect" name="roleId" class="rounded-md border-0 py-2 pl-3 pr-8 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600" disabled>
+                    <option value="">-- Select Application First --</option>
+                </select>
+            </div>
+            <button type="submit" id="assignAppRoleBtn" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50" disabled>Assign</button>
+        </form>
+    </div>
+}
+
+@section Scripts {
+@if (isCompanyScoped && applications != null)
+{
+    var appRolesJson = new System.Text.StringBuilder();
+    appRolesJson.Append("{");
+    bool firstApp = true;
+    foreach (var app in applications)
+    {
+        if (!firstApp) appRolesJson.Append(",");
+        firstApp = false;
+        appRolesJson.Append($"\"{app.Id}\":[");
+        bool firstRole = true;
+        foreach (var role in app.Roles?.Where(r => r.IsActive) ?? Enumerable.Empty<EnterpriseApplicationRole>())
+        {
+            if (!firstRole) appRolesJson.Append(",");
+            firstRole = false;
+            appRolesJson.Append($"{{\"id\":\"{role.Id}\",\"name\":{System.Text.Json.JsonSerializer.Serialize(role.Name)}}}");
+        }
+        appRolesJson.Append("]");
+    }
+    appRolesJson.Append("}");
+
+    <script>
+    (function () {
+        var appRoles = @Html.Raw(appRolesJson.ToString());
+        var appSel  = document.getElementById('appSelect');
+        var roleSel = document.getElementById('appRoleSelect');
+        var btn     = document.getElementById('assignAppRoleBtn');
+
+        appSel.addEventListener('change', function () {
+            var appId = this.value;
+            var roles = appRoles[appId] || [];
+            if (!appId || roles.length === 0) {
+                roleSel.innerHTML = '<option value="">-- No roles available --</option>';
+                roleSel.disabled = true;
+                btn.disabled = true;
+                return;
+            }
+            var opts = '<option value="">-- Select Role --</option>';
+            roles.forEach(function (r) {
+                var opt = document.createElement('option');
+                opt.value = r.id;
+                opt.textContent = r.name;
+                opts += opt.outerHTML;
+            });
+            roleSel.innerHTML = opts;
+            roleSel.disabled = false;
+            btn.disabled = false;
+        });
+    }());
+    </script>
+}
+}

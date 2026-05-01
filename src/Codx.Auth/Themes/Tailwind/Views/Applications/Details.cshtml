@@ -1,0 +1,251 @@
+@model Codx.Auth.ViewModels.Applications.ApplicationDetailsViewModel
+
+@{
+    ViewData["Title"] = Model.Application.DisplayName;
+}
+
+<partial name="_Breadcrumb" view-data='@(new ViewDataDictionary(ViewData) { ["BreadcrumbItems"] = new[] { ("Home", Url.Action("Index","Home")), ("Applications", Url.Action("Index","Applications")), (Model.Application.DisplayName, (string?)null) } })' />
+<partial name="_PageHeading" />
+
+<div x-data="{ tab: 'details' }">
+
+    <div class="border-b border-gray-200">
+        <nav class="-mb-px flex flex-wrap gap-x-6" aria-label="Tabs">
+            @foreach (var t in new[] { ("details","Details"),("roles","Roles"),("clients","Linked Clients"),("assignments","User Assignments") })
+            {
+                <button type="button" @@click="tab = '@t.Item1'"
+                        :class="tab === '@t.Item1' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
+                        class="whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium">
+                    @t.Item2
+                </button>
+            }
+        </nav>
+    </div>
+
+    <!-- Details tab -->
+    <div x-show="tab === 'details'" x-cloak class="mt-6">
+        <dl class="divide-y divide-gray-100">
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">ID</dt><dd class="mt-1 text-sm font-mono text-gray-700 sm:col-span-2 sm:mt-0">@Model.Application.Id</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Display Name</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Application.DisplayName</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Description</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Application.Description</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Allow Self-Registration</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.Application.AllowSelfRegistration ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Active</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.Application.IsActive ? "Yes" : "No")</dd></div>
+        </dl>
+    </div>
+
+    <!-- Roles tab -->
+    <div x-show="tab === 'roles'" x-cloak class="mt-6">
+        <div class="mb-4">
+            <a asp-action="AddRole" asp-route-appId="@Model.Application.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add Role</a>
+        </div>
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Active</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr></thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                    @if (Model.Application.Roles == null || !Model.Application.Roles.Any())
+                    {
+                        <tr><td colspan="3" class="px-6 py-4 text-sm text-gray-500">No roles defined.</td></tr>
+                    }
+                    @foreach (var role in Model.Application.Roles ?? Enumerable.Empty<Codx.Auth.Data.Entities.Enterprise.EnterpriseApplicationRole>())
+                    {
+                        <tr class="hover:bg-gray-50">
+                            <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900">@role.Name</td>
+                            <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">@(role.IsActive ? "Yes" : "No")</td>
+                            <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                                <a asp-action="EditRole" asp-route-appId="@Model.Application.Id" asp-route-roleId="@role.Id" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Linked Clients tab -->
+    <div x-show="tab === 'clients'" x-cloak class="mt-6">
+        @if (Model.LinkedClientIds.Any())
+        {
+            <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50"><tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client ID</th>
+                    </tr></thead>
+                    <tbody class="divide-y divide-gray-200 bg-white">
+                        @foreach (var clientId in Model.LinkedClientIds)
+                        {
+                            <tr class="hover:bg-gray-50">
+                                <td class="whitespace-nowrap px-6 py-4 text-sm font-mono text-gray-900">@clientId</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <p class="text-sm text-gray-500">No linked clients.</p>
+        }
+    </div>
+
+    <!-- User Assignments tab (C-01: XSS-safe fetch cascade) -->
+    <div x-show="tab === 'assignments'" x-cloak class="mt-6"
+         x-data="{
+            tenantId: '',
+            companyId: '',
+            companies: [],
+            users: [],
+            assignments: [],
+            assignmentsLoading: false,
+            loadCompanies(tenantId) {
+                this.companyId = '';
+                this.companies = [];
+                this.users = [];
+                this.assignments = [];
+                if (!tenantId) return;
+                fetch('/Companies/GetCompaniesTableData?tenantid=' + tenantId + '&offset=0&limit=500')
+                    .then(r => r.json())
+                    .then(data => { this.companies = data.rows || []; });
+            },
+            loadCompanyData(companyId) {
+                this.users = [];
+                this.assignments = [];
+                if (!companyId) return;
+                this.assignmentsLoading = true;
+                var appId = '@Model.Application.Id';
+                Promise.all([
+                    fetch('/Applications/' + appId + '/user-assignments?tenantId=' + this.tenantId + '&companyId=' + companyId).then(r => r.json()),
+                    fetch('/Applications/' + appId + '/company-members?tenantId=' + this.tenantId + '&companyId=' + companyId).then(r => r.json())
+                ]).then(([asgns, members]) => {
+                    this.assignments = asgns || [];
+                    this.users = members || [];
+                    this.assignmentsLoading = false;
+                }).catch(() => { this.assignmentsLoading = false; });
+            }
+         }">
+
+        @if (TempData["AssignSuccess"] != null)
+        {
+            <div x-data="{ show: true }" x-show="show" class="rounded-md bg-green-50 p-4 ring-1 ring-inset ring-green-600/10 mb-4">
+                <div class="flex justify-between">
+                    <p class="text-sm text-green-700">@TempData["AssignSuccess"]</p>
+                    <button type="button" @@click="show = false" class="text-green-400 hover:text-green-600"><svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg></button>
+                </div>
+            </div>
+        }
+        @if (TempData["AssignError"] != null)
+        {
+            <div x-data="{ show: true }" x-show="show" class="rounded-md bg-red-50 p-4 ring-1 ring-inset ring-red-600/10 mb-4">
+                <div class="flex justify-between">
+                    <p class="text-sm text-red-700">@TempData["AssignError"]</p>
+                    <button type="button" @@click="show = false" class="text-red-400 hover:text-red-600"><svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg></button>
+                </div>
+            </div>
+        }
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-6">
+            <div>
+                <label class="block text-sm/6 font-medium text-gray-900">Tenant</label>
+                <select x-model="tenantId" @@change="loadCompanies(tenantId)"
+                        class="mt-2 block w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600">
+                    <option value="">-- Select Tenant --</option>
+                    @foreach (var t in Model.AllTenants)
+                    {
+                        <option value="@t.Id">@t.Name</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm/6 font-medium text-gray-900">Company</label>
+                <select x-model="companyId" @@change="loadCompanyData(companyId)"
+                        :disabled="!tenantId || companies.length === 0"
+                        class="mt-2 block w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 disabled:bg-gray-50">
+                    <option value="">-- Select Company --</option>
+                    <template x-for="c in companies" :key="c.id">
+                        <option :value="c.id" x-text="c.name"></option>
+                    </template>
+                </select>
+            </div>
+        </div>
+
+        <!-- Assignments table — XSS-safe via x-text (textContent) -->
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200 mb-6">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned At</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned By</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr></thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                    <template x-if="!companyId">
+                        <tr><td colspan="5" class="px-6 py-4 text-sm text-gray-500">Select a tenant and company to view assignments.</td></tr>
+                    </template>
+                    <template x-if="companyId && assignmentsLoading">
+                        <tr><td colspan="5" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr>
+                    </template>
+                    <template x-if="companyId && !assignmentsLoading && assignments.length === 0">
+                        <tr><td colspan="5" class="px-6 py-4 text-sm text-gray-500">No role assignments for this company.</td></tr>
+                    </template>
+                    <template x-for="r in assignments" :key="r.id">
+                        <tr class="hover:bg-gray-50">
+                            <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900" x-text="r.userEmail"></td>
+                            <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500" x-text="r.roleName"></td>
+                            <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500" x-text="r.assignedAt ? new Date(r.assignedAt).toLocaleString() : ''"></td>
+                            <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500" x-text="r.assignedByEmail"></td>
+                            <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
+                                <form :action="'/Applications/@Model.Application.Id/user-assignments/' + r.id + '/remove'" method="post">
+                                    <input type="hidden" name="__RequestVerificationToken" value="@Html.AntiForgeryToken()" />
+                                    <button type="submit" class="text-red-600 hover:text-red-900 text-sm font-medium">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+
+        <hr class="border-gray-200 mb-6" />
+        <h3 class="text-sm font-semibold text-gray-900 mb-4">Assign Role</h3>
+        <form asp-action="Assign" asp-route-appId="@Model.Application.Id" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="TenantId" :value="tenantId" />
+            <input type="hidden" name="CompanyId" :value="companyId" />
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 items-end">
+                <div>
+                    <label class="block text-sm/6 font-medium text-gray-900">User</label>
+                    <select name="UserId" :disabled="users.length === 0"
+                            class="mt-2 block w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 disabled:bg-gray-50">
+                        <option value="">-- Select Company First --</option>
+                        <template x-for="m in users" :key="m.userId">
+                            <option :value="m.userId" x-text="m.email"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm/6 font-medium text-gray-900">Role</label>
+                    <select name="RoleId"
+                            class="mt-2 block w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600">
+                        <option value="">-- Select Role --</option>
+                        @foreach (var role in Model.Application.Roles?.Where(r => r.IsActive) ?? Enumerable.Empty<Codx.Auth.Data.Entities.Enterprise.EnterpriseApplicationRole>())
+                        {
+                            <option value="@role.Id">@role.Name</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <button type="submit" :disabled="users.length === 0"
+                            class="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50">
+                        Assign
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+</div>

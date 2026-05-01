@@ -1,0 +1,113 @@
+@model Codx.Auth.ViewModels.Invitations.InvitationsIndexViewModel
+
+@{
+    ViewData["Title"] = "Invitations";
+}
+
+<nav aria-label="Breadcrumb" class="mb-4">
+    <ol class="flex items-center gap-x-2 text-sm text-gray-500">
+        <li><a href="@Url.Action("Index","Home")" class="hover:text-gray-700">Home</a></li>
+        <li><span class="mx-1">/</span></li>
+        @if (User.IsInRole("PlatformAdministrator"))
+        {
+            <li><a href="@Url.Action("Index","Tenants")" class="hover:text-gray-700">Tenants</a></li>
+            <li><span class="mx-1">/</span></li>
+            <li><a asp-controller="Tenants" asp-action="Details" asp-route-id="@Model.TenantId" class="hover:text-gray-700">Tenant</a></li>
+            @if (Model.CompanyId.HasValue)
+            {
+                <li><span class="mx-1">/</span></li>
+                <li><a asp-controller="Companies" asp-action="Details" asp-route-id="@Model.CompanyId" class="hover:text-gray-700">Company</a></li>
+            }
+        }
+        else
+        {
+            <li><a href="@Url.Action("Index","MyProfile")" class="hover:text-gray-700">My Profile</a></li>
+            <li><span class="mx-1">/</span></li>
+            <li><a asp-controller="MyProfile" asp-action="ManageTenant" asp-route-id="@Model.TenantId" class="hover:text-gray-700">Tenant</a></li>
+            @if (Model.CompanyId.HasValue)
+            {
+                <li><span class="mx-1">/</span></li>
+                <li><a asp-controller="MyProfile" asp-action="ManageTenantCompanyDetails" asp-route-id="@Model.CompanyId" class="hover:text-gray-700">Company</a></li>
+            }
+        }
+        <li><span class="mx-1">/</span></li>
+        <li class="text-gray-900 font-medium" aria-current="page">Invitations</li>
+    </ol>
+</nav>
+
+<div class="mb-6 flex items-center justify-between">
+    <h1 class="text-2xl font-semibold text-gray-900">Invitations</h1>
+    <a asp-action="Create" asp-route-tenantId="@Model.TenantId" asp-route-companyId="@Model.CompanyId"
+       class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Send Invitation</a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="rounded-md bg-green-50 p-4 ring-1 ring-inset ring-green-600/20 mb-4">
+        <p class="text-sm text-green-800">@TempData["Success"]</p>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="rounded-md bg-red-50 p-4 ring-1 ring-inset ring-red-600/10 mb-4">
+        <p class="text-sm text-red-800">@TempData["Error"]</p>
+    </div>
+}
+
+<div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Email</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Expires</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Invited</th>
+                <th class="px-6 py-3"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 bg-white">
+            @foreach (var inv in Model.Invitations)
+            {
+                <tr class="hover:bg-gray-50">
+                    <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900">@inv.Email</td>
+                    <td class="whitespace-nowrap px-6 py-4 text-sm">
+                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium @(inv.Status == "Pending" ? "bg-yellow-100 text-yellow-800" : inv.Status == "Accepted" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800")">@inv.Status</span>
+                    </td>
+                    <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900">@inv.ExpiresAt.ToLocalTime().ToString("g")</td>
+                    <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900">@inv.CreatedAt.ToLocalTime().ToString("g")</td>
+                    <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
+                        @if (inv.Status == "Pending")
+                        {
+                            <form asp-action="Revoke" asp-route-id="@inv.Id" method="post" style="display:inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="tenantId" value="@Model.TenantId" />
+                                <input type="hidden" name="companyId" value="@Model.CompanyId" />
+                                <button type="submit" class="text-red-600 hover:text-red-500 text-sm font-medium">Revoke</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (!Model.Invitations.Any())
+            {
+                <tr><td colspan="5" class="px-6 py-4 text-sm text-gray-500 text-center">No invitations found.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (Model.TotalPages > 1)
+{
+    <nav class="mt-4 flex items-center justify-between">
+        <div class="flex gap-x-1">
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                <a asp-action="Index"
+                   asp-route-tenantId="@Model.TenantId"
+                   asp-route-companyId="@Model.CompanyId"
+                   asp-route-page="@i"
+                   class="@(i == Model.Page ? "rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white" : "rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50")">@i</a>
+            }
+        </div>
+    </nav>
+}

@@ -36,4 +36,10 @@
     <Folder Include="wwwroot\images\" />
   </ItemGroup>
 
+  <Target Name="BuildTailwindCSS" BeforeTargets="Build">
+    <Exec Command="npx tailwindcss -i Themes/Tailwind/Assets/tailwind.input.css -o wwwroot/themes/tailwind/tailwind.css --minify"
+          WorkingDirectory="$(ProjectDir)"
+          ContinueOnError="true" />
+  </Target>
+
 </Project>

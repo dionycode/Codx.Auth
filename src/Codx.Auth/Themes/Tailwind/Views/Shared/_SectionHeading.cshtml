@@ -1,0 +1,11 @@
+@{
+    var sectionTitle = ViewData["SectionTitle"] as string ?? string.Empty;
+    var sectionDesc = ViewData["SectionDescription"] as string;
+}
+<div class="border-b border-gray-900/10 pb-4 mb-4">
+    <h2 class="text-base/7 font-semibold text-gray-900">@sectionTitle</h2>
+    @if (!string.IsNullOrWhiteSpace(sectionDesc))
+    {
+        <p class="mt-1 text-sm/6 text-gray-600">@sectionDesc</p>
+    }
+</div>

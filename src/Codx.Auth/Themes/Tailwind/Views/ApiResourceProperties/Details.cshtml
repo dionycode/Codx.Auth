@@ -1,0 +1,19 @@
+@model ApiResourcePropertyDetailsViewModel
+
+@{
+    ViewData["Title"] = "API Resource Property Details";
+}
+
+<partial name="_Breadcrumb" view-data='@(new ViewDataDictionary(ViewData) { ["BreadcrumbItems"] = new[] { ("Home", Url.Action("Index","Home")), ("API Resources", Url.Action("Index","ApiResources")), ("API Resource", Url.Action("Details","ApiResources", new { id = Model.ApiResourceId })), ("Property", (string?)null) } })' />
+<partial name="_PageHeading" />
+
+<div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200 px-6 py-8 max-w-2xl">
+    <div class="mb-4 flex gap-x-3">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50">Edit</a>
+        <a asp-action="Delete" asp-route-id="@Model.Id" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-red-700 shadow-xs ring-1 ring-inset ring-red-300 hover:bg-red-50">Delete</a>
+    </div>
+    <dl class="divide-y divide-gray-100">
+        <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Key</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Key</dd></div>
+        <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Value</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Value</dd></div>
+    </dl>
+</div>

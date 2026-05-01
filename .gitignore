@@ -10,5 +10,6 @@
 /src/Codx.Auth/obj
 /src/Codx.Auth/appsettings.Development.json
 /src/Codx.Auth/wwwroot/lib/bootstrap/node_modules/hugo-bin
+/src/Codx.Auth/node_modules
 /test/Codx.Auth.Manual.Test/obj
 /test/Codx.Auth.Manual.Test/bin

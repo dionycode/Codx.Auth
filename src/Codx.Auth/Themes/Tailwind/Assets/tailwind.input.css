@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+@source "../Views/**/*.cshtml";
+
+@theme {
+  --color-primary: var(--color-indigo-600);
+  --color-primary-hover: var(--color-indigo-500);
+}

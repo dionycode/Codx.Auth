@@ -1,0 +1,26 @@
+@model ApiScopeEditViewModel
+
+@{
+    ViewData["Title"] = "Edit API Scope";
+}
+
+<partial name="_Breadcrumb" view-data='@(new ViewDataDictionary(ViewData) { ["BreadcrumbItems"] = new[] { ("Home", Url.Action("Index","Home")), ("API Scopes", Url.Action("Index","ApiScopes")), (Model.Name, Url.Action("Details","ApiScopes", new { id = Model.Id })), ("Edit", (string?)null) } })' />
+<partial name="_PageHeading" />
+
+<div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200 px-6 py-8 max-w-2xl">
+    <partial name="_ValidationSummary" />
+    <form asp-action="Edit" class="space-y-5">
+        <input type="hidden" asp-for="Id" />
+        <div><label asp-for="Name" class="block text-sm/6 font-medium text-gray-900">Name</label><div class="mt-2"><input asp-for="Name" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+        <div><label asp-for="DisplayName" class="block text-sm/6 font-medium text-gray-900">Display Name</label><div class="mt-2"><input asp-for="DisplayName" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+        <div class="flex items-center gap-x-3"><input asp-for="Enabled" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="Enabled" class="text-sm/6 font-medium text-gray-900">Enabled</label></div>
+        <div><label asp-for="Description" class="block text-sm/6 font-medium text-gray-900">Description</label><div class="mt-2"><input asp-for="Description" class="block w-full rounded-md bg-white px-3 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" /></div></div>
+        <div class="flex items-center gap-x-3"><input asp-for="Required" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="Required" class="text-sm/6 font-medium text-gray-900">Required</label></div>
+        <div class="flex items-center gap-x-3"><input asp-for="Emphasize" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="Emphasize" class="text-sm/6 font-medium text-gray-900">Emphasize</label></div>
+        <div class="flex items-center gap-x-3"><input asp-for="ShowInDiscoveryDocument" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" /><label asp-for="ShowInDiscoveryDocument" class="text-sm/6 font-medium text-gray-900">Show in Discovery Document</label></div>
+        <div class="flex gap-x-3">
+            <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Save</button>
+            <a asp-action="Details" asp-route-id="@Model.Id" class="rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50">Cancel</a>
+        </div>
+    </form>
+</div>

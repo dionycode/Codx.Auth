@@ -1,0 +1,171 @@
+@model TenantDetailsViewModel
+
+@{
+    ViewData["Title"] = "Tenant Details";
+}
+
+<partial name="_Breadcrumb" view-data='@(new ViewDataDictionary(ViewData) { ["BreadcrumbItems"] = new[] { ("Home", Url.Action("Index","Home")), ("Tenants", Url.Action("Index","Tenants")), ("Tenant", (string?)null) } })' />
+<partial name="_PageHeading" />
+
+<div x-data="{ tab: 'details' }">
+
+    <div class="border-b border-gray-200">
+        <nav class="-mb-px flex flex-wrap gap-x-6" aria-label="Tabs">
+            @foreach (var t in new[] { ("details","Details"),("companies","Companies"),("owners","Owners"),("memberships","Memberships"),("invitations","Invitations") })
+            {
+                <button type="button" @@click="tab = '@t.Item1'"
+                        :class="tab === '@t.Item1' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
+                        class="whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium">
+                    @t.Item2
+                </button>
+            }
+        </nav>
+    </div>
+
+    <div x-show="tab === 'details'" x-cloak class="mt-6">
+        <div class="mb-4">
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50">Edit</a>
+        </div>
+        <dl class="divide-y divide-gray-100">
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Name</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Name</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Email</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Email</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Phone</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Phone</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Address</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Address</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Description</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Description</dd></div>
+        </dl>
+    </div>
+
+    <div x-show="tab === 'companies'" x-cloak class="mt-6">
+        <div class="mb-4"><a asp-action="Add" asp-controller="Companies" asp-route-tenantId="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add Company</a></div>
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr></thead>
+            <tbody class="divide-y divide-gray-200 bg-white" id="companiesBody"><tr><td colspan="2" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div x-show="tab === 'owners'" x-cloak class="mt-6">
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr></thead>
+            <tbody class="divide-y divide-gray-200 bg-white" id="ownersBody"><tr><td colspan="2" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div x-show="tab === 'memberships'" x-cloak class="mt-6">
+        <div class="mb-4"><a asp-action="Create" asp-controller="Memberships" asp-route-tenantId="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add Member</a></div>
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr></thead>
+            <tbody class="divide-y divide-gray-200 bg-white" id="membershipsBody"><tr><td colspan="3" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div x-show="tab === 'invitations'" x-cloak class="mt-6">
+        <div class="mb-4"><a asp-action="Create" asp-controller="Invitations" asp-route-tenantId="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Send Invitation</a></div>
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr></thead>
+            <tbody class="divide-y divide-gray-200 bg-white" id="invitationsBody"><tr><td colspan="3" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    var tenantId = '@Model.Id';
+
+    function loadTable(url, tbodyId, renderRow) {
+        fetch(url + '?offset=0&limit=200&tenantId=' + tenantId)
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                var tbody = document.getElementById(tbodyId);
+                tbody.innerHTML = '';
+                var rows = res.rows || [];
+                if (!rows.length) {
+                    var tr = document.createElement('tr');
+                    var td = document.createElement('td');
+                    td.colSpan = 10;
+                    td.className = 'px-6 py-4 text-sm text-gray-500';
+                    td.textContent = 'No records.';
+                    tr.appendChild(td);
+                    tbody.appendChild(tr);
+                    return;
+                }
+                rows.forEach(function (row) { tbody.appendChild(renderRow(row)); });
+            });
+    }
+
+    function makeRow(cells, actions) {
+        var tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50';
+        cells.forEach(function (val) {
+            var td = document.createElement('td');
+            td.className = 'whitespace-nowrap px-6 py-4 text-sm text-gray-900';
+            td.textContent = val;
+            tr.appendChild(td);
+        });
+        if (actions) {
+            var tdA = document.createElement('td');
+            tdA.className = 'whitespace-nowrap px-6 py-4 text-right text-sm';
+            tdA.appendChild(actions);
+            tr.appendChild(tdA);
+        }
+        return tr;
+    }
+
+    function deleteA(href) {
+        var a = document.createElement('a');
+        a.href = href;
+        a.className = 'text-red-600 hover:text-red-900 text-sm font-medium';
+        a.textContent = 'Delete';
+        return a;
+    }
+
+    loadTable('@Url.Action("GetCompaniesTableData","Companies")', 'companiesBody', function (r) {
+        var d = document.createElement('div');
+        var aD = document.createElement('a');
+        aD.href = '/Companies/Details/' + r.id;
+        aD.className = 'text-indigo-600 hover:text-indigo-900 text-sm font-medium mr-3';
+        aD.textContent = 'Details';
+        d.appendChild(aD);
+        d.appendChild(deleteA('/Companies/Delete/' + r.id));
+        return makeRow([r.name], d);
+    });
+
+    loadTable('@Url.Action("GetTenantOwnersTableData","Memberships")', 'ownersBody', function (r) {
+        var d = document.createElement('div');
+        d.appendChild(deleteA('/Memberships/Delete/' + r.id));
+        return makeRow([r.userName || r.userId], d);
+    });
+
+    loadTable('@Url.Action("GetTenantMembershipsTableData","Memberships")', 'membershipsBody', function (r) {
+        var d = document.createElement('div');
+        d.appendChild(deleteA('/Memberships/Delete/' + r.id));
+        return makeRow([r.userName || r.userId, r.role || ''], d);
+    });
+
+    loadTable('@Url.Action("GetTenantInvitationsTableData","Invitations")', 'invitationsBody', function (r) {
+        var d = document.createElement('div');
+        d.appendChild(deleteA('/Invitations/Delete/' + r.id));
+        return makeRow([r.email, r.status || ''], d);
+    });
+}());
+</script>
+}

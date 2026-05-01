@@ -29,7 +29,8 @@ namespace Codx.Auth.Infrastructure.Theming
                 var themedLocations = new[]
                 {
                     $"/Themes/{themeName}/Views/{{1}}/{{0}}.cshtml",
-                    $"/Themes/{themeName}/Views/Shared/{{0}}.cshtml"
+                    $"/Themes/{themeName}/Views/Shared/{{0}}.cshtml",
+                    $"/Themes/{themeName}/Views/Shared/Components/{{1}}/{{0}}.cshtml"
                 };
 
                 return themedLocations.Concat(viewLocations);

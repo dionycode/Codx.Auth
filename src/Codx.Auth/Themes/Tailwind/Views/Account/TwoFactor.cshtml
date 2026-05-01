@@ -1,0 +1,117 @@
+@model Codx.Auth.ViewModels.Account.TwoFactorViewModel
+@{
+    ViewData["Title"] = "Two-Factor Authentication";
+    Layout = "_BlankLayout";
+}
+
+<div class="sm:mx-auto sm:w-full sm:max-w-md">
+    <h2 class="mt-6 text-center text-2xl font-bold tracking-tight text-gray-900">Two-Factor Authentication</h2>
+</div>
+
+<div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200 px-6 py-8">
+
+        @if (!string.IsNullOrEmpty(Model.Message))
+        {
+            <div x-data="{ show: true }" x-show="show"
+                 class="rounded-md @(Model.IsError ? "bg-red-50 ring-red-600/10" : "bg-blue-50 ring-blue-600/10") p-4 ring-1 ring-inset mb-6">
+                <div class="flex">
+                    <div class="flex-1 text-sm @(Model.IsError ? "text-red-700" : "text-blue-700")">@Model.Message</div>
+                    <button type="button" @@click="show = false" class="ml-3 shrink-0 @(Model.IsError ? "text-red-400 hover:text-red-600" : "text-blue-400 hover:text-blue-600")">
+                        <span class="sr-only">Dismiss</span>
+                        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        }
+
+        <div class="text-center mb-6">
+            <svg class="mx-auto h-12 w-12 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+            </svg>
+            <p class="mt-2 text-sm text-gray-600">We've sent a 6-digit verification code to:</p>
+            <p class="font-semibold text-indigo-600">@Model.Email</p>
+            <p class="mt-1 text-xs text-gray-500">Enter the code below to complete your login.</p>
+        </div>
+
+        <form asp-action="TwoFactor" method="post" id="twoFactorForm" class="space-y-5">
+            <input type="hidden" asp-for="ReturnUrl" />
+            <input type="hidden" asp-for="RememberLogin" />
+            <input type="hidden" asp-for="Email" />
+
+            <div>
+                <label asp-for="Code" class="block text-sm/6 font-medium text-gray-900">Verification Code</label>
+                <div class="mt-2">
+                    <input asp-for="Code"
+                           class="block w-full rounded-md bg-white px-3 py-3 text-center text-2xl font-bold text-gray-900 tracking-widest outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600"
+                           placeholder="000000"
+                           maxlength="6"
+                           autocomplete="off"
+                           autofocus
+                           id="codeInput" />
+                </div>
+                <span asp-validation-for="Code" class="text-sm text-red-600"></span>
+            </div>
+
+            <div class="flex gap-x-3">
+                <button type="submit" name="button" value="verify"
+                        class="flex-1 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                    Verify Code
+                </button>
+                <button type="submit" name="button" value="resend"
+                        class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                    Resend
+                </button>
+            </div>
+
+            <div class="text-center">
+                <a asp-action="Login" asp-route-returnUrl="@Model.ReturnUrl" class="text-sm text-indigo-600 hover:text-indigo-500">
+                    ← Back to Login
+                </a>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var codeInput = document.getElementById('codeInput');
+        var form = document.getElementById('twoFactorForm');
+
+        codeInput.addEventListener('input', function (e) {
+            var value = e.target.value.replace(/\D/g, '');
+            if (value.length > 6) { value = value.slice(0, 6); }
+            e.target.value = value;
+            if (value.length === 6) {
+                setTimeout(function () {
+                    var submitBtn = form.querySelector('button[value="verify"]');
+                    submitBtn.click();
+                }, 500);
+            }
+        });
+
+        codeInput.addEventListener('keypress', function (e) {
+            if (!/\d/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Enter'].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+
+        codeInput.addEventListener('paste', function (e) {
+            e.preventDefault();
+            var paste = (e.clipboardData || window.clipboardData).getData('text');
+            var digits = paste.replace(/\D/g, '').slice(0, 6);
+            e.target.value = digits;
+            if (digits.length === 6) {
+                setTimeout(function () {
+                    var submitBtn = form.querySelector('button[value="verify"]');
+                    submitBtn.click();
+                }, 500);
+            }
+        });
+    });
+</script>
+}

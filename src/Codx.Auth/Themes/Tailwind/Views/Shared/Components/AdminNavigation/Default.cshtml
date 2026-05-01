@@ -1,0 +1,124 @@
+@model bool
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+}
+
+@if (Model)
+{
+    <nav class="flex flex-1 flex-col" aria-label="Sidebar">
+        <ul role="list" class="flex flex-1 flex-col gap-y-7">
+            <li>
+                <ul role="list" class="-mx-2 space-y-1">
+
+                    <!-- Organization dropdown -->
+                    <li x-data="{ open: false }">
+                        <button type="button"
+                                @@click="open = !open"
+                                @@keydown.escape.window="open = false"
+                                :aria-expanded="open"
+                                class="flex w-full items-center gap-x-3 rounded-md p-2 text-left text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
+                            <svg class="h-5 w-5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                            </svg>
+                            Organization
+                            <svg :class="open ? 'rotate-90' : ''" class="ml-auto h-5 w-5 shrink-0 text-gray-400 transition-transform" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        <ul x-show="open"
+                            x-collapse
+                            @@click.outside="open = false"
+                            class="mt-1 px-2 space-y-1"
+                            role="list">
+                            <li>
+                                <a asp-area="" asp-controller="Tenants" asp-action="Index"
+                                   aria-current="@(currentController == "Tenants" ? "page" : null)"
+                                   class="@(currentController == "Tenants" ? "bg-gray-50 text-indigo-600" : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600") block rounded-md py-2 pl-9 pr-2 text-sm font-medium">
+                                    Tenants
+                                </a>
+                            </li>
+                            <li>
+                                <a asp-area="" asp-controller="Users" asp-action="Index"
+                                   aria-current="@(currentController == "Users" ? "page" : null)"
+                                   class="@(currentController == "Users" ? "bg-gray-50 text-indigo-600" : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600") block rounded-md py-2 pl-9 pr-2 text-sm font-medium">
+                                    Users
+                                </a>
+                            </li>
+                            <li>
+                                <a asp-area="" asp-controller="Roles" asp-action="Index"
+                                   aria-current="@(currentController == "Roles" ? "page" : null)"
+                                   class="@(currentController == "Roles" ? "bg-gray-50 text-indigo-600" : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600") block rounded-md py-2 pl-9 pr-2 text-sm font-medium">
+                                    Roles
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- Identity Server dropdown -->
+                    <li x-data="{ open: false }">
+                        <button type="button"
+                                @@click="open = !open"
+                                @@keydown.escape.window="open = false"
+                                :aria-expanded="open"
+                                class="flex w-full items-center gap-x-3 rounded-md p-2 text-left text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
+                            <svg class="h-5 w-5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                            </svg>
+                            Identity Server
+                            <svg :class="open ? 'rotate-90' : ''" class="ml-auto h-5 w-5 shrink-0 text-gray-400 transition-transform" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        <ul x-show="open"
+                            x-collapse
+                            @@click.outside="open = false"
+                            class="mt-1 px-2 space-y-1"
+                            role="list">
+                            <li>
+                                <a asp-area="" asp-controller="Clients" asp-action="Index"
+                                   aria-current="@(currentController == "Clients" ? "page" : null)"
+                                   class="@(currentController == "Clients" ? "bg-gray-50 text-indigo-600" : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600") block rounded-md py-2 pl-9 pr-2 text-sm font-medium">
+                                    Clients
+                                </a>
+                            </li>
+                            <li>
+                                <a asp-area="" asp-controller="IdentityResources" asp-action="Index"
+                                   aria-current="@(currentController == "IdentityResources" ? "page" : null)"
+                                   class="@(currentController == "IdentityResources" ? "bg-gray-50 text-indigo-600" : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600") block rounded-md py-2 pl-9 pr-2 text-sm font-medium">
+                                    Identity Resources
+                                </a>
+                            </li>
+                            <li>
+                                <a asp-area="" asp-controller="ApiResources" asp-action="Index"
+                                   aria-current="@(currentController == "ApiResources" ? "page" : null)"
+                                   class="@(currentController == "ApiResources" ? "bg-gray-50 text-indigo-600" : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600") block rounded-md py-2 pl-9 pr-2 text-sm font-medium">
+                                    Api Resources
+                                </a>
+                            </li>
+                            <li>
+                                <a asp-area="" asp-controller="ApiScopes" asp-action="Index"
+                                   aria-current="@(currentController == "ApiScopes" ? "page" : null)"
+                                   class="@(currentController == "ApiScopes" ? "bg-gray-50 text-indigo-600" : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600") block rounded-md py-2 pl-9 pr-2 text-sm font-medium">
+                                    Api Scopes
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- Applications direct link -->
+                    <li>
+                        <a asp-area="" asp-controller="Applications" asp-action="Index"
+                           aria-current="@(currentController == "Applications" ? "page" : null)"
+                           class="@(currentController == "Applications" ? "bg-gray-50 text-indigo-600" : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600") group flex gap-x-3 rounded-md p-2 text-sm font-semibold">
+                            <svg class="h-5 w-5 shrink-0 @(currentController == "Applications" ? "text-indigo-600" : "text-gray-400 group-hover:text-indigo-600")" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
+                            </svg>
+                            Applications
+                        </a>
+                    </li>
+
+                </ul>
+            </li>
+        </ul>
+    </nav>
+}

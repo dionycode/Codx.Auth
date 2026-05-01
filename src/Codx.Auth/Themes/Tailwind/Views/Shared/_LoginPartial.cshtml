@@ -1,0 +1,20 @@
+@using Codx.Auth.Extensions
+@using Microsoft.AspNetCore.Identity
+@using Codx.Auth.Data.Entities.AspNet
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+
+@if (User.Identity.IsAuthenticated)
+{
+    <div class="flex items-center gap-x-4">
+        <a asp-controller="MyProfile" asp-action="Index" class="text-sm font-medium text-gray-700 hover:text-indigo-600">
+            Hello @User.GetUserDisplayName()
+        </a>
+        <form asp-controller="Account" asp-action="Logout">
+            <button type="submit"
+                    class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                Logout
+            </button>
+        </form>
+    </div>
+}

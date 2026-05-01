@@ -1,0 +1,351 @@
+@model ClientDetailsViewModel
+
+@{
+    ViewData["Title"] = "Client Details";
+}
+
+<partial name="_Breadcrumb" view-data='@(new ViewDataDictionary(ViewData) { ["BreadcrumbItems"] = new[] { ("Home", Url.Action("Index","Home")), ("Clients", Url.Action("Index","Clients")), ("Client", (string?)null) } })' />
+<partial name="_PageHeading" />
+
+<div x-data="{ tab: 'details' }">
+
+    <!-- Tab nav -->
+    <div class="border-b border-gray-200">
+        <nav class="-mb-px flex flex-wrap gap-x-6" aria-label="Tabs">
+            @foreach (var t in new[] { ("details","Details"),("claims","Claims"),("granttypes","Grant Types"),("scopes","Scopes"),("corsorigins","CORS Origins"),("secrets","Secrets"),("idprestrictions","IDP Restrictions"),("redirecturis","Redirect URIs"),("logoutredirecturis","Post Logout Redirect URIs"),("properties","Properties") })
+            {
+                <button type="button" @@click="tab = '@t.Item1'"
+                        :class="tab === '@t.Item1' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
+                        class="whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium">
+                    @t.Item2
+                </button>
+            }
+        </nav>
+    </div>
+
+    <!-- Details tab -->
+    <div x-show="tab === 'details'" x-cloak class="mt-6">
+        <div class="mb-4">
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50">Edit</a>
+        </div>
+        <dl class="divide-y divide-gray-100">
+
+            <div class="py-2 col-span-3"><h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 pt-2">Basic</h3></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Client ID</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.ClientId</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Client Name</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.ClientName</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Description</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Description</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Client URI</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.ClientUri</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Logo URI</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.LogoUri</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Protocol Type</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.ProtocolType</dd></div>
+
+            <div class="py-2 col-span-3"><h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 pt-2">Behaviour</h3></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Enabled</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.Enabled ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Enable Local Login</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.EnableLocalLogin ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Allow Offline Access</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.AllowOfflineAccess ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Allow Self-Registration</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.AllowSelfRegistration ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Require Client Secret</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.RequireClientSecret ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Require Consent</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.RequireConsent ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Allow Remember Consent</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.AllowRememberConsent ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Require PKCE</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.RequirePkce ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Allow Plain Text PKCE</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.AllowPlainTextPkce ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Require Request Object</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.RequireRequestObject ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Allow Access Tokens Via Browser</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.AllowAccessTokensViaBrowser ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Include JWT ID</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.IncludeJwtId ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Always Include User Claims In Id Token</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.AlwaysIncludeUserClaimsInIdToken ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Always Send Client Claims</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.AlwaysSendClientClaims ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Update Access Token Claims On Refresh</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.UpdateAccessTokenClaimsOnRefresh ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Non-Editable</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.NonEditable ? "Yes" : "No")</dd></div>
+
+            <div class="py-2 col-span-3"><h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 pt-2">Logout</h3></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Front Channel Logout Session Required</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.FrontChannelLogoutSessionRequired ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Front Channel Logout URI</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.FrontChannelLogoutUri</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Back Channel Logout Session Required</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@(Model.BackChannelLogoutSessionRequired ? "Yes" : "No")</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Back Channel Logout URI</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.BackChannelLogoutUri</dd></div>
+
+            <div class="py-2 col-span-3"><h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 pt-2">Token Lifetimes</h3></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Access Token Lifetime</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.AccessTokenLifetime</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Authorization Code Lifetime</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.AuthorizationCodeLifetime</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Consent Lifetime</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.ConsentLifetime</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Absolute Refresh Token Lifetime</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.AbsoluteRefreshTokenLifetime</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Sliding Refresh Token Lifetime</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.SlidingRefreshTokenLifetime</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">User SSO Lifetime</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.UserSsoLifetime</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Device Code Lifetime</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.DeviceCodeLifetime</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Identity Token Lifetime</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.IdentityTokenLifetime</dd></div>
+
+            <div class="py-2 col-span-3"><h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 pt-2">Token Settings</h3></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Access Token Type</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.AccessTokenType</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Refresh Token Usage</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.RefreshTokenUsage</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Refresh Token Expiration</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.RefreshTokenExpiration</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Client Claims Prefix</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.ClientClaimsPrefix</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Pair-Wise Subject Salt</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.PairWiseSubjectSalt</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">User Code Type</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.UserCodeType</dd></div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Allowed Identity Token Signing Algorithms</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.AllowedIdentityTokenSigningAlgorithms</dd></div>
+
+        </dl>
+    </div>
+
+    <!-- Claims tab -->
+    <div x-show="tab === 'claims'" x-cloak class="mt-6">
+        <div class="mb-4">
+            <a asp-action="Add" asp-controller="ClientClaims" asp-route-clientId="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add Claim</a>
+        </div>
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Value</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr></thead>
+                <tbody class="divide-y divide-gray-200 bg-white" id="claimsBody"><tr><td colspan="3" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Grant Types tab -->
+    <div x-show="tab === 'granttypes'" x-cloak class="mt-6">
+        <div class="mb-4">
+            <a asp-action="Add" asp-controller="ClientGrantTypes" asp-route-clientId="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add Grant Type</a>
+        </div>
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grant Type</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr></thead>
+                <tbody class="divide-y divide-gray-200 bg-white" id="grantTypesBody"><tr><td colspan="2" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Scopes tab -->
+    <div x-show="tab === 'scopes'" x-cloak class="mt-6">
+        <div class="mb-4">
+            <a asp-action="Add" asp-controller="ClientScopes" asp-route-clientId="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add Scope</a>
+        </div>
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scope</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr></thead>
+                <tbody class="divide-y divide-gray-200 bg-white" id="scopesBody"><tr><td colspan="2" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- CORS Origins tab -->
+    <div x-show="tab === 'corsorigins'" x-cloak class="mt-6">
+        <div class="mb-4">
+            <a asp-action="Add" asp-controller="ClientCorsOrigins" asp-route-clientId="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add CORS Origin</a>
+        </div>
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Origin</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr></thead>
+                <tbody class="divide-y divide-gray-200 bg-white" id="corsBody"><tr><td colspan="2" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Secrets tab -->
+    <div x-show="tab === 'secrets'" x-cloak class="mt-6">
+        <div class="mb-4">
+            <a asp-action="Add" asp-controller="ClientSecrets" asp-route-clientId="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add Secret</a>
+        </div>
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr></thead>
+                <tbody class="divide-y divide-gray-200 bg-white" id="secretsBody"><tr><td colspan="3" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- IDP Restrictions tab -->
+    <div x-show="tab === 'idprestrictions'" x-cloak class="mt-6">
+        <div class="mb-4">
+            <a asp-action="Add" asp-controller="ClientIdpRestrictions" asp-route-clientId="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add IDP Restriction</a>
+        </div>
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Provider</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr></thead>
+                <tbody class="divide-y divide-gray-200 bg-white" id="idpBody"><tr><td colspan="2" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Redirect URIs tab -->
+    <div x-show="tab === 'redirecturis'" x-cloak class="mt-6">
+        <div class="mb-4">
+            <a asp-action="Add" asp-controller="ClientRedirectUris" asp-route-clientId="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add Redirect URI</a>
+        </div>
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Redirect URI</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr></thead>
+                <tbody class="divide-y divide-gray-200 bg-white" id="redirectBody"><tr><td colspan="2" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Post Logout Redirect URIs tab -->
+    <div x-show="tab === 'logoutredirecturis'" x-cloak class="mt-6">
+        <div class="mb-4">
+            <a asp-action="Add" asp-controller="ClientPostLogoutRedirectUris" asp-route-clientId="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add Post Logout Redirect URI</a>
+        </div>
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Post Logout Redirect URI</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr></thead>
+                <tbody class="divide-y divide-gray-200 bg-white" id="logoutRedirectBody"><tr><td colspan="2" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Properties tab -->
+    <div x-show="tab === 'properties'" x-cloak class="mt-6">
+        <div class="mb-4">
+            <a asp-action="Add" asp-controller="ClientProperties" asp-route-clientId="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add Property</a>
+        </div>
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Key</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Value</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr></thead>
+                <tbody class="divide-y divide-gray-200 bg-white" id="propertiesBody"><tr><td colspan="3" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    var clientId = '@Model.Id';
+
+    function loadTable(url, params, tbodyId, renderRow) {
+        fetch(url + '?offset=0&limit=200&clientId=' + clientId)
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                var tbody = document.getElementById(tbodyId);
+                tbody.innerHTML = '';
+                var rows = res.rows || [];
+                if (rows.length === 0) {
+                    var tr = document.createElement('tr');
+                    var td = document.createElement('td');
+                    td.colSpan = 10;
+                    td.className = 'px-6 py-4 text-sm text-gray-500';
+                    td.textContent = 'No records.';
+                    tr.appendChild(td);
+                    tbody.appendChild(tr);
+                    return;
+                }
+                rows.forEach(function (row) { tbody.appendChild(renderRow(row)); });
+            });
+    }
+
+    function actionLink(href, label, cls) {
+        var a = document.createElement('a');
+        a.href = href;
+        a.className = cls || 'text-indigo-600 hover:text-indigo-900 mr-3 text-sm font-medium';
+        a.textContent = label;
+        return a;
+    }
+
+    function deleteLink(href) {
+        var a = document.createElement('a');
+        a.href = href;
+        a.className = 'text-red-600 hover:text-red-900 text-sm font-medium';
+        a.textContent = 'Delete';
+        return a;
+    }
+
+    function makeRow(cells, actionsEl) {
+        var tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50';
+        cells.forEach(function (val) {
+            var td = document.createElement('td');
+            td.className = 'whitespace-nowrap px-6 py-4 text-sm text-gray-900';
+            td.textContent = val;
+            tr.appendChild(td);
+        });
+        if (actionsEl) {
+            var tdA = document.createElement('td');
+            tdA.className = 'whitespace-nowrap px-6 py-4 text-right text-sm';
+            tdA.appendChild(actionsEl);
+            tr.appendChild(tdA);
+        }
+        return tr;
+    }
+
+    loadTable('@Url.Action("GetClientClaimsTableData","ClientClaims")', {}, 'claimsBody', function (r) {
+        var d = document.createElement('div');
+        d.appendChild(deleteLink('/ClientClaims/Delete/' + r.id));
+        return makeRow([r.type, r.value], d);
+    });
+
+    loadTable('@Url.Action("GetClientGrantTypesTableData","ClientGrantTypes")', {}, 'grantTypesBody', function (r) {
+        var d = document.createElement('div');
+        d.appendChild(deleteLink('/ClientGrantTypes/Delete/' + r.id));
+        return makeRow([r.grantType], d);
+    });
+
+    loadTable('@Url.Action("GetClientScopesTableData","ClientScopes")', {}, 'scopesBody', function (r) {
+        var d = document.createElement('div');
+        d.appendChild(deleteLink('/ClientScopes/Delete/' + r.id));
+        return makeRow([r.scope], d);
+    });
+
+    loadTable('@Url.Action("GetClientCorsOriginsTableData","ClientCorsOrigins")', {}, 'corsBody', function (r) {
+        var d = document.createElement('div');
+        d.appendChild(deleteLink('/ClientCorsOrigins/Delete/' + r.id));
+        return makeRow([r.origin], d);
+    });
+
+    loadTable('@Url.Action("GetClientSecretsTableData","ClientSecrets")', {}, 'secretsBody', function (r) {
+        var d = document.createElement('div');
+        d.appendChild(deleteLink('/ClientSecrets/Delete/' + r.id));
+        return makeRow([r.type, r.description], d);
+    });
+
+    loadTable('@Url.Action("GetClientIdpRestrictionsTableData","ClientIdpRestrictions")', {}, 'idpBody', function (r) {
+        var d = document.createElement('div');
+        d.appendChild(deleteLink('/ClientIdpRestrictions/Delete/' + r.id));
+        return makeRow([r.provider], d);
+    });
+
+    loadTable('@Url.Action("GetClientRedirectUrisTableData","ClientRedirectUris")', {}, 'redirectBody', function (r) {
+        var d = document.createElement('div');
+        d.appendChild(deleteLink('/ClientRedirectUris/Delete/' + r.id));
+        return makeRow([r.redirectUri], d);
+    });
+
+    loadTable('@Url.Action("GetClientPostLogoutRedirectUrisTableData","ClientPostLogoutRedirectUris")', {}, 'logoutRedirectBody', function (r) {
+        var d = document.createElement('div');
+        d.appendChild(deleteLink('/ClientPostLogoutRedirectUris/Delete/' + r.id));
+        return makeRow([r.postLogoutRedirectUri], d);
+    });
+
+    loadTable('@Url.Action("GetClientPropertiesTableData","ClientProperties")', {}, 'propertiesBody', function (r) {
+        var d = document.createElement('div');
+        d.appendChild(deleteLink('/ClientProperties/Delete/' + r.id));
+        return makeRow([r.key, r.value], d);
+    });
+}());
+</script>
+}

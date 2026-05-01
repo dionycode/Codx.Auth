@@ -1,0 +1,55 @@
+@{
+    ViewData["Title"] = "Identity Resources";
+}
+
+<partial name="_Breadcrumb" view-data='@(new ViewDataDictionary(ViewData) { ["BreadcrumbItems"] = new[] { ("Home", Url.Action("Index","Home")), ("Identity Resources", (string?)null) } })' />
+<partial name="_PageHeading" />
+
+<div class="mb-4">
+    <a asp-action="Add" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add Identity Resource</a>
+</div>
+
+<div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Name</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Display Name</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Enabled</th>
+                <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tbody-main" class="divide-y divide-gray-100 bg-white"></tbody>
+    </table>
+</div>
+
+@section Scripts {
+<script>
+(function() {
+    fetch('@Url.Action("GetIdentityResourcesTableData","IdentityResources")?offset=0&limit=200')
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            var tbody = document.getElementById('tbody-main');
+            var rows = res.rows || [];
+            if (!rows.length) {
+                var tr = document.createElement('tr');
+                var td = document.createElement('td'); td.colSpan = 4; td.className = 'px-6 py-4 text-sm text-gray-500 text-center'; td.textContent = 'No records found.';
+                tr.appendChild(td); tbody.appendChild(tr); return;
+            }
+            rows.forEach(function(row) {
+                var tr = document.createElement('tr'); tr.className = 'hover:bg-gray-50';
+                ['name','displayName','enabled'].forEach(function(col) {
+                    var td = document.createElement('td'); td.className = 'whitespace-nowrap px-6 py-4 text-sm text-gray-900'; td.textContent = row[col] != null ? String(row[col]) : '';
+                    tr.appendChild(td);
+                });
+                var tdAct = document.createElement('td'); tdAct.className = 'whitespace-nowrap px-6 py-4 text-right text-sm';
+                var a1 = document.createElement('a'); a1.href = '/IdentityResources/Details/' + row.id; a1.className = 'text-indigo-600 hover:text-indigo-500'; a1.textContent = 'Details';
+                var a2 = document.createElement('a'); a2.href = '/IdentityResources/Edit/' + row.id; a2.className = 'ml-3 text-indigo-600 hover:text-indigo-500'; a2.textContent = 'Edit';
+                var a3 = document.createElement('a'); a3.href = '/IdentityResources/Delete/' + row.id; a3.className = 'ml-3 text-red-600 hover:text-red-500'; a3.textContent = 'Delete';
+                tdAct.appendChild(a1); tdAct.appendChild(a2); tdAct.appendChild(a3);
+                tr.appendChild(tdAct); tbody.appendChild(tr);
+            });
+        });
+})();
+</script>
+}

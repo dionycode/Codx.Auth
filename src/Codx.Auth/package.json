@@ -1,0 +1,18 @@
+{
+  "name": "codx-auth-theme",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i Themes/Tailwind/Assets/tailwind.input.css -o wwwroot/themes/tailwind/tailwind.css --minify",
+    "build:js": "esbuild Themes/Tailwind/Assets/site.src.js --bundle --outfile=wwwroot/themes/tailwind/site.js --platform=browser --format=iife --minify",
+    "build": "npm run build:css && npm run build:js",
+    "watch:css": "tailwindcss -i Themes/Tailwind/Assets/tailwind.input.css -o wwwroot/themes/tailwind/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "@alpinejs/focus": "^3.14.3",
+    "@tailwindcss/cli": "^4.0.0",
+    "alpinejs": "^3.14.3",
+    "esbuild": "^0.24.0",
+    "tailwindcss": "^4.0.0"
+  }
+}

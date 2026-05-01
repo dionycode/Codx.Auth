@@ -1,0 +1,198 @@
+@model UserDetailsViewModel
+
+@{
+    ViewData["Title"] = "User Details";
+}
+
+<partial name="_Breadcrumb" view-data='@(new ViewDataDictionary(ViewData) { ["BreadcrumbItems"] = new[] { ("Home", Url.Action("Index","Home")), ("Users", Url.Action("Index","Users")), ("User", (string?)null) } })' />
+<partial name="_PageHeading" />
+
+<div x-data="{ tab: 'details' }">
+
+    <div class="border-b border-gray-200">
+        <nav class="-mb-px flex flex-wrap gap-x-6" aria-label="Tabs">
+            @foreach (var t in new[] { ("details","Details"),("claims","Claims"),("roles","Roles"),("tenantmemberships","Tenant Memberships"),("companymemberships","Company Memberships") })
+            {
+                <button type="button" @@click="tab = '@t.Item1'"
+                        :class="tab === '@t.Item1' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
+                        class="whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium">
+                    @t.Item2
+                </button>
+            }
+        </nav>
+    </div>
+
+    <!-- Details tab -->
+    <div x-show="tab === 'details'" x-cloak class="mt-6">
+        <div class="mb-4 flex gap-x-3">
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50">Edit</a>
+            <a asp-action="ResetPassword" asp-route-id="@Model.Id" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50">Reset Password</a>
+            <a asp-action="Delete" asp-route-id="@Model.Id" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-red-700 shadow-xs ring-1 ring-inset ring-red-300 hover:bg-red-50">Delete</a>
+        </div>
+        <dl class="divide-y divide-gray-100">
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="text-sm font-medium text-gray-900">Username</dt>
+                <dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.UserName</dd>
+            </div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="text-sm font-medium text-gray-900">Email</dt>
+                <dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Email</dd>
+            </div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="text-sm font-medium text-gray-900">First Name</dt>
+                <dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.FirstName</dd>
+            </div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="text-sm font-medium text-gray-900">Middle Name</dt>
+                <dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.MiddleName</dd>
+            </div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="text-sm font-medium text-gray-900">Last Name</dt>
+                <dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.LastName</dd>
+            </div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="text-sm font-medium text-gray-900">Default Company</dt>
+                <dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.CompanyName</dd>
+            </div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="text-sm font-medium text-gray-900">Default Tenant</dt>
+                <dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.TenantName</dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Claims tab -->
+    <div x-show="tab === 'claims'" x-cloak class="mt-6">
+        <div class="mb-4">
+            <a asp-action="Add" asp-controller="UserClaims" asp-route-userid="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add Claim</a>
+        </div>
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Value</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr></thead>
+                <tbody class="divide-y divide-gray-200 bg-white" id="userClaimsBody"><tr><td colspan="3" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Roles tab -->
+    <div x-show="tab === 'roles'" x-cloak class="mt-6">
+        <div class="mb-4">
+            <a asp-action="Add" asp-controller="UserRoles" asp-route-userid="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add Role</a>
+        </div>
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr></thead>
+                <tbody class="divide-y divide-gray-200 bg-white" id="userRolesBody"><tr><td colspan="2" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Tenant Memberships tab -->
+    <div x-show="tab === 'tenantmemberships'" x-cloak class="mt-6">
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tenant</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                </tr></thead>
+                <tbody class="divide-y divide-gray-200 bg-white" id="tenantMembershipsBody"><tr><td colspan="2" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Company Memberships tab -->
+    <div x-show="tab === 'companymemberships'" x-cloak class="mt-6">
+        <div class="overflow-hidden rounded-lg ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                </tr></thead>
+                <tbody class="divide-y divide-gray-200 bg-white" id="companyMembershipsBody"><tr><td colspan="2" class="px-6 py-4 text-sm text-gray-500">Loading&hellip;</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    var userId = '@Model.Id';
+
+    function loadTable(url, tbodyId, renderRow) {
+        fetch(url + '?offset=0&limit=200&userId=' + userId)
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                var tbody = document.getElementById(tbodyId);
+                tbody.innerHTML = '';
+                var rows = res.rows || [];
+                if (rows.length === 0) {
+                    var tr = document.createElement('tr');
+                    var td = document.createElement('td');
+                    td.colSpan = 10;
+                    td.className = 'px-6 py-4 text-sm text-gray-500';
+                    td.textContent = 'No records.';
+                    tr.appendChild(td);
+                    tbody.appendChild(tr);
+                    return;
+                }
+                rows.forEach(function (row) { tbody.appendChild(renderRow(row)); });
+            });
+    }
+
+    function makeRow(cells, actions) {
+        var tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50';
+        cells.forEach(function (val) {
+            var td = document.createElement('td');
+            td.className = 'whitespace-nowrap px-6 py-4 text-sm text-gray-900';
+            td.textContent = val;
+            tr.appendChild(td);
+        });
+        if (actions) {
+            var tdA = document.createElement('td');
+            tdA.className = 'whitespace-nowrap px-6 py-4 text-right text-sm';
+            tdA.appendChild(actions);
+            tr.appendChild(tdA);
+        }
+        return tr;
+    }
+
+    loadTable('@Url.Action("GetUserClaimsTableData","UserClaims")', 'userClaimsBody', function (r) {
+        var d = document.createElement('div');
+        var a = document.createElement('a');
+        a.href = '/UserClaims/Delete/' + r.id;
+        a.className = 'text-red-600 hover:text-red-900 text-sm font-medium';
+        a.textContent = 'Delete';
+        d.appendChild(a);
+        return makeRow([r.claimType, r.claimValue], d);
+    });
+
+    loadTable('@Url.Action("GetUserRolesTableData","UserRoles")', 'userRolesBody', function (r) {
+        var d = document.createElement('div');
+        var a = document.createElement('a');
+        a.href = '/UserRoles/Delete/' + r.id;
+        a.className = 'text-red-600 hover:text-red-900 text-sm font-medium';
+        a.textContent = 'Delete';
+        d.appendChild(a);
+        return makeRow([r.roleName], d);
+    });
+
+    loadTable('@Url.Action("GetUserTenantMembershipsTableData","Memberships")', 'tenantMembershipsBody', function (r) {
+        return makeRow([r.tenantName || r.tenantId, r.role || '']);
+    });
+
+    loadTable('@Url.Action("GetUserCompanyMembershipsTableData","Memberships")', 'companyMembershipsBody', function (r) {
+        return makeRow([r.companyName || r.companyId, r.role || '']);
+    });
+}());
+</script>
+}

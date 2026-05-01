@@ -1,0 +1,6 @@
+@if (ViewContext.ModelState.IsValid == false)
+{
+    <div class="rounded-md bg-red-50 p-4 ring-1 ring-inset ring-red-600/10 mb-4">
+        <div asp-validation-summary="All" class="text-sm text-red-700"></div>
+    </div>
+}

@@ -8,7 +8,8 @@ namespace Codx.Auth.ViewModels
 {
 
     public class ClientDetailsViewModel : BaseClientViewModel
-    {  
+    {
+        public bool AllowSelfRegistration { get; set; }
     }
 
     public class ClientAddViewModel : BaseClientViewModel

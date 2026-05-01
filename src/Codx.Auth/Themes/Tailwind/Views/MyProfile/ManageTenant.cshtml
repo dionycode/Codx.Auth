@@ -1,0 +1,144 @@
+@model TenantDetailsViewModel
+
+@{
+    ViewData["Title"] = "Manage Tenant";
+}
+
+<partial name="_Breadcrumb" view-data='@(new ViewDataDictionary(ViewData) { ["BreadcrumbItems"] = new[] { ("Home", Url.Action("Index","Home")), ("My Profile", Url.Action("Index","MyProfile")), (Model.Name, (string?)null) } })' />
+<partial name="_PageHeading" />
+
+<div x-data="{ tab: 'details' }">
+    <div class="border-b border-gray-200 mb-6">
+        <nav class="-mb-px flex space-x-6">
+            <button @@click="tab='details'" :class="tab==='details' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">Details</button>
+            <button @@click="tab='companies'; loadCompanies()" :class="tab==='companies' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">Companies</button>
+            <button @@click="tab='memberships'; loadMemberships()" :class="tab==='memberships' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">Memberships</button>
+            <button @@click="tab='invitations'; loadInvitations()" :class="tab==='invitations' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">Invitations</button>
+        </nav>
+    </div>
+
+    <div x-show="tab==='details'">
+        <div class="mb-4 flex gap-x-3">
+            <a asp-action="ManageTenantEdit" asp-controller="MyProfile" asp-route-id="@Model.Id" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50">Edit</a>
+            @if (Model.IsOwner)
+            {
+                <a asp-action="ManageTenantDelete" asp-controller="MyProfile" asp-route-id="@Model.Id" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-red-700 shadow-xs ring-1 ring-inset ring-red-300 hover:bg-red-50">Delete</a>
+            }
+        </div>
+        <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200 px-6 py-6 max-w-2xl">
+            <dl class="divide-y divide-gray-100">
+                <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Name</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Name</dd></div>
+                <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Email</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Email</dd></div>
+                <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Phone</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Phone</dd></div>
+                <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Address</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Address</dd></div>
+                <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Description</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Description</dd></div>
+            </dl>
+        </div>
+    </div>
+
+    <div x-show="tab==='companies'">
+        <div class="mb-3">
+            <a asp-action="ManageTenantCompanyAdd" asp-controller="MyProfile" asp-route-tenantid="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add Company</a>
+        </div>
+        <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Name</th><th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500">Actions</th></tr></thead>
+                <tbody id="tbody-companies" class="divide-y divide-gray-100 bg-white"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div x-show="tab==='memberships'">
+        <div class="mb-3">
+            <a asp-action="Create" asp-controller="Memberships" asp-route-tenantId="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add Membership</a>
+        </div>
+        <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Email</th><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Roles</th><th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500">Actions</th></tr></thead>
+                <tbody id="tbody-memberships" class="divide-y divide-gray-100 bg-white"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div x-show="tab==='invitations'">
+        <div class="mb-3">
+            <a asp-controller="Invitations" asp-action="Create" asp-route-tenantId="@Model.Id" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Send Invitation</a>
+        </div>
+        <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Email</th><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Roles</th><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Status</th><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Expires</th><th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500">Actions</th></tr></thead>
+                <tbody id="tbody-invitations" class="divide-y divide-gray-100 bg-white"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var modelId = '@Model.Id';
+var companiesLoaded = false, membershipsLoaded = false, invitationsLoaded = false;
+
+function loadCompanies() {
+    if (companiesLoaded) return; companiesLoaded = true;
+    fetch('@Url.Action("GetManageTenantCompaniesTableData","MyProfile")?offset=0&limit=200&tenantid=' + modelId)
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            var tbody = document.getElementById('tbody-companies');
+            var rows = res.rows || [];
+            if (!rows.length) { tbody.innerHTML = '<tr><td colspan="2" class="px-6 py-4 text-sm text-gray-500 text-center">No companies found.</td></tr>'; return; }
+            rows.forEach(function(row) {
+                var tr = document.createElement('tr'); tr.className = 'hover:bg-gray-50';
+                var td1 = document.createElement('td'); td1.className = 'px-6 py-4 text-sm text-gray-900'; td1.textContent = row.name || '';
+                var tdAct = document.createElement('td'); tdAct.className = 'px-6 py-4 text-right text-sm';
+                var a1 = document.createElement('a'); a1.href = '/MyProfile/ManageTenantCompanyDetails/' + row.id; a1.className = 'text-indigo-600 hover:text-indigo-500 mr-3'; a1.textContent = 'Details';
+                var a2 = document.createElement('a'); a2.href = '/MyProfile/ManageTenantCompanyEdit/' + row.id; a2.className = 'text-yellow-600 hover:text-yellow-500 mr-3'; a2.textContent = 'Edit';
+                var a3 = document.createElement('a'); a3.href = '/MyProfile/ManageTenantCompanyDelete/' + row.id; a3.className = 'text-red-600 hover:text-red-500'; a3.textContent = 'Delete';
+                tdAct.appendChild(a1); tdAct.appendChild(a2); tdAct.appendChild(a3);
+                tr.appendChild(td1); tr.appendChild(tdAct); tbody.appendChild(tr);
+            });
+        });
+}
+
+function loadMemberships() {
+    if (membershipsLoaded) return; membershipsLoaded = true;
+    fetch('@Url.Action("GetManageTenantMembersTableData","MyProfile")?offset=0&limit=200&tenantid=' + modelId)
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            var tbody = document.getElementById('tbody-memberships');
+            var rows = res.rows || [];
+            if (!rows.length) { tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-sm text-gray-500 text-center">No memberships found.</td></tr>'; return; }
+            rows.forEach(function(row) {
+                var tr = document.createElement('tr'); tr.className = 'hover:bg-gray-50';
+                ['userEmail','roles'].forEach(function(col) { var td = document.createElement('td'); td.className = 'px-6 py-4 text-sm text-gray-900'; td.textContent = row[col] || ''; tr.appendChild(td); });
+                var tdAct = document.createElement('td'); tdAct.className = 'px-6 py-4 text-right text-sm';
+                var a = document.createElement('a'); a.href = '/Memberships/' + row.membershipId; a.className = 'text-indigo-600 hover:text-indigo-500'; a.textContent = 'View';
+                tdAct.appendChild(a); tr.appendChild(tdAct); tbody.appendChild(tr);
+            });
+        });
+}
+
+function loadInvitations() {
+    if (invitationsLoaded) return; invitationsLoaded = true;
+    fetch('@Url.Action("GetTenantInvitationsTableData","Invitations")?offset=0&limit=200&tenantId=' + modelId)
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            var tbody = document.getElementById('tbody-invitations');
+            var rows = res.rows || [];
+            if (!rows.length) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-sm text-gray-500 text-center">No invitations found.</td></tr>'; return; }
+            rows.forEach(function(row) {
+                var tr = document.createElement('tr'); tr.className = 'hover:bg-gray-50';
+                var tdEmail = document.createElement('td'); tdEmail.className = 'px-6 py-4 text-sm text-gray-900'; tdEmail.textContent = row.email || '';
+                var tdRoles = document.createElement('td'); tdRoles.className = 'px-6 py-4 text-sm text-gray-900'; tdRoles.textContent = row.roles || '';
+                var tdStatus = document.createElement('td'); tdStatus.className = 'px-6 py-4 text-sm';
+                var span = document.createElement('span');
+                span.className = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ' + (row.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : row.status === 'Accepted' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800');
+                span.textContent = row.status || '';
+                tdStatus.appendChild(span);
+                var tdExp = document.createElement('td'); tdExp.className = 'px-6 py-4 text-sm text-gray-900'; tdExp.textContent = row.expiresAt ? new Date(row.expiresAt).toLocaleDateString() : '';
+                var tdAct = document.createElement('td'); tdAct.className = 'px-6 py-4 text-right text-sm'; tdAct.textContent = '';
+                tr.appendChild(tdEmail); tr.appendChild(tdRoles); tr.appendChild(tdStatus); tr.appendChild(tdExp); tr.appendChild(tdAct); tbody.appendChild(tr);
+            });
+        });
+}
+</script>
+}

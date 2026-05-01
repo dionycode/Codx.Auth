@@ -1,0 +1,26 @@
+@using Codx.Auth.Configuration
+@using Microsoft.Extensions.Options
+@inject IOptions<ThemeOptions> ThemeOptions
+@{
+    var theme = ThemeOptions.Value;
+    var brandName = !string.IsNullOrWhiteSpace(theme?.BrandName) ? theme.BrandName : "Codx.Auth";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - @brandName</title>
+    <link rel="stylesheet" href="~/themes/tailwind/tailwind.css" asp-append-version="true" />
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <main>
+            @RenderBody()
+        </main>
+    </div>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/themes/tailwind/site.js" defer></script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

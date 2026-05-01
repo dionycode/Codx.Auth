@@ -1,0 +1,155 @@
+@using Codx.Auth.Configuration
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Options
+@inject IOptions<ThemeOptions> ThemeOptions
+@inject IAuthorizationService AuthorizationService
+@{
+    var theme = ThemeOptions.Value;
+    var brandName = !string.IsNullOrWhiteSpace(theme?.BrandName) ? theme.BrandName : "Codx.Auth";
+    var brandIcon = !string.IsNullOrWhiteSpace(theme?.BrandIconPath) ? theme.BrandIconPath : null;
+    var isAdmin = (await AuthorizationService.AuthorizeAsync(User, "PlatformAdmin")).Succeeded;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - @brandName</title>
+    <link rel="stylesheet" href="~/themes/tailwind/tailwind.css" asp-append-version="true" />
+</head>
+<body x-data="{ sidebarOpen: false }" class="min-h-screen bg-gray-50">
+
+    <!-- Mobile sidebar backdrop -->
+    <div x-show="sidebarOpen"
+         x-transition:enter="transition-opacity ease-linear duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity ease-linear duration-300"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="relative z-50 lg:hidden"
+         role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-gray-900/80" @@click="sidebarOpen = false"></div>
+        <div class="fixed inset-0 flex">
+            <div class="relative mr-16 flex w-full max-w-xs flex-1"
+                 @@click.outside="sidebarOpen = false"
+                 x-trap.noscroll.inert="sidebarOpen"
+                 @@keydown.escape.window="sidebarOpen = false">
+                <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4">
+                    <div class="flex h-16 shrink-0 items-center">
+                        <a asp-controller="Home" asp-action="Index" class="flex items-center gap-x-2 text-indigo-600 font-semibold text-lg">
+                            @if (brandIcon is not null)
+                            {
+                                <img src="@brandIcon" alt="@brandName" class="h-8 w-auto" />
+                            }
+                        </a>
+                    </div>
+                    @await Component.InvokeAsync("AdminNavigation")
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main column -->
+    <div class="min-h-screen flex flex-col">
+
+        <!-- Top header -->
+        <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-xs sm:gap-x-6 sm:px-6 lg:px-8">
+            <!-- Hamburger (mobile only) -->
+            <button type="button" class="-m-2.5 p-2.5 text-gray-700 lg:hidden" @@click="sidebarOpen = true">
+                <span class="sr-only">Open sidebar</span>
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                </svg>
+            </button>
+
+            <div class="h-6 w-px bg-gray-200 lg:hidden" aria-hidden="true"></div>
+
+            <!-- Brand name -->
+            <div class="flex items-center">
+                <a asp-controller="Home" asp-action="Index" class="text-gray-900 font-semibold text-base hover:text-indigo-600">
+                    @brandName
+                </a>
+            </div>
+
+            @if (isAdmin)
+            {
+                <nav class="hidden lg:flex items-center gap-x-1 ml-6" aria-label="Main navigation">
+
+                    <div x-data="{ open: false }" class="relative">
+                        <button type="button" @@click="open = !open" @@keydown.escape.window="open = false" :aria-expanded="open"
+                                class="flex items-center gap-x-1 rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                            Organization
+                            <svg :class="open ? 'rotate-180' : ''" class="h-4 w-4 text-gray-400 transition-transform" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        <div x-show="open" @@click.outside="open = false"
+                             x-transition:enter="transition-opacity ease-out duration-200"
+                             x-transition:enter-start="opacity-0"
+                             x-transition:enter-end="opacity-100"
+                             class="absolute left-0 top-full mt-1 w-44 rounded-md bg-white shadow-lg ring-1 ring-gray-200 z-50">
+                            <div class="py-1">
+                                <a asp-controller="Tenants" asp-action="Index" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600">Tenants</a>
+                                <a asp-controller="Users" asp-action="Index" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600">Users</a>
+                                <a asp-controller="Roles" asp-action="Index" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600">Roles</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div x-data="{ open: false }" class="relative">
+                        <button type="button" @@click="open = !open" @@keydown.escape.window="open = false" :aria-expanded="open"
+                                class="flex items-center gap-x-1 rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                            Identity Server
+                            <svg :class="open ? 'rotate-180' : ''" class="h-4 w-4 text-gray-400 transition-transform" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        <div x-show="open" @@click.outside="open = false"
+                             x-transition:enter="transition-opacity ease-out duration-200"
+                             x-transition:enter-start="opacity-0"
+                             x-transition:enter-end="opacity-100"
+                             class="absolute left-0 top-full mt-1 w-52 rounded-md bg-white shadow-lg ring-1 ring-gray-200 z-50">
+                            <div class="py-1">
+                                <a asp-controller="Clients" asp-action="Index" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600">Clients</a>
+                                <a asp-controller="IdentityResources" asp-action="Index" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600">Identity Resources</a>
+                                <a asp-controller="ApiResources" asp-action="Index" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600">Api Resources</a>
+                                <a asp-controller="ApiScopes" asp-action="Index" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600">Api Scopes</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <a asp-controller="Applications" asp-action="Index"
+                       class="rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                        Applications
+                    </a>
+
+                </nav>
+            }
+
+            <div class="flex flex-1 gap-x-4 self-stretch lg:gap-x-6 justify-end">
+                <div class="flex items-center gap-x-4 lg:gap-x-6">
+                    <partial name="_LoginPartial" />
+                </div>
+            </div>
+        </div>
+
+        <main class="flex-1 py-6">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                @RenderBody()
+            </div>
+        </main>
+
+        <footer class="border-t border-gray-200 bg-white py-4">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <p class="text-sm text-gray-500">&copy; @DateTime.Now.Year - @brandName &mdash; <a asp-controller="Home" asp-action="Privacy" class="text-indigo-600 hover:text-indigo-500">Privacy</a></p>
+            </div>
+        </footer>
+
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/themes/tailwind/site.js" defer></script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

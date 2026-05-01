@@ -1,0 +1,250 @@
+@model MyProfileViewModel
+
+@{
+    ViewData["Title"] = "My Profile";
+}
+
+<partial name="_Breadcrumb" view-data='@(new ViewDataDictionary(ViewData) { ["BreadcrumbItems"] = new[] { ("Home", Url.Action("Index","Home")), ("My Profile", (string?)null) } })' />
+<partial name="_PageHeading" />
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div x-data="{ show: true }" x-show="show" class="rounded-md bg-green-50 p-4 ring-1 ring-inset ring-green-600/20 mb-4">
+        <div class="flex justify-between items-start">
+            <p class="text-sm text-green-800">@TempData["SuccessMessage"]</p>
+            <button type="button" @@click="show=false" class="ml-4 text-green-600 hover:text-green-500">&times;</button>
+        </div>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div x-data="{ show: true }" x-show="show" class="rounded-md bg-red-50 p-4 ring-1 ring-inset ring-red-600/10 mb-4">
+        <div class="flex justify-between items-start">
+            <p class="text-sm text-red-800">@TempData["ErrorMessage"]</p>
+            <button type="button" @@click="show=false" class="ml-4 text-red-600 hover:text-red-500">&times;</button>
+        </div>
+    </div>
+}
+
+<div x-data="{ tab: 'details' }">
+    <div class="border-b border-gray-200 mb-6">
+        <nav class="-mb-px flex space-x-6 overflow-x-auto">
+            <button @@click="tab='details'" :class="tab==='details' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">Details</button>
+            <button @@click="tab='claims'; loadClaims()" :class="tab==='claims' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">Claims</button>
+            <button @@click="tab='roles'; loadRoles()" :class="tab==='roles' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">Roles</button>
+            <button @@click="tab='tenantMemberships'; loadTenantMemberships()" :class="tab==='tenantMemberships' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">Tenant Memberships</button>
+            <button @@click="tab='companyMemberships'; loadCompanyMemberships()" :class="tab==='companyMemberships' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">Company Memberships</button>
+            <button @@click="tab='manage'" :class="tab==='manage' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">Manage</button>
+        </nav>
+    </div>
+
+    <div x-show="tab==='details'">
+        <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200 px-6 py-6 max-w-2xl">
+            <dl class="divide-y divide-gray-100">
+                <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Username</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.UserName</dd></div>
+                <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Email</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.Email</dd></div>
+                <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">First Name</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.FirstName</dd></div>
+                <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Middle Name</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.MiddleName</dd></div>
+                <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Last Name</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.LastName</dd></div>
+                <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Default Company</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.CompanyName</dd></div>
+                <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-900">Default Tenant</dt><dd class="mt-1 text-sm text-gray-700 sm:col-span-2 sm:mt-0">@Model.TenantName</dd></div>
+            </dl>
+        </div>
+    </div>
+
+    <div x-show="tab==='claims'">
+        <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Type</th><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Value</th></tr></thead>
+                <tbody id="tbody-claims" class="divide-y divide-gray-100 bg-white"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div x-show="tab==='roles'">
+        <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Role</th></tr></thead>
+                <tbody id="tbody-roles" class="divide-y divide-gray-100 bg-white"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div x-show="tab==='tenantMemberships'">
+        <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Tenant</th><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Roles</th><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Status</th><th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500">Actions</th></tr></thead>
+                <tbody id="tbody-tenantMemberships" class="divide-y divide-gray-100 bg-white"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div x-show="tab==='companyMemberships'">
+        <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Tenant</th><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Company</th><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Roles</th><th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Status</th><th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500">Actions</th></tr></thead>
+                <tbody id="tbody-companyMemberships" class="divide-y divide-gray-100 bg-white"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div x-show="tab==='manage'">
+        <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-inset ring-gray-200 px-6 py-6 max-w-2xl space-y-6">
+            <div>
+                <a asp-action="ChangePassword" asp-controller="MyProfile" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50">Change Password</a>
+            </div>
+
+            @if (Model.CanUseTwoFactor)
+            {
+                <div class="border-t border-gray-100 pt-6">
+                    <h2 class="text-base font-semibold text-gray-900 mb-2">Two-Factor Authentication</h2>
+                    <p class="text-sm text-gray-500 mb-4">Add an extra layer of security to your account with two-factor authentication.</p>
+                    @if (Model.TwoFactorEnabled)
+                    {
+                        <div class="rounded-md bg-green-50 p-3 ring-1 ring-inset ring-green-600/20 mb-3 inline-block">
+                            <span class="text-sm text-green-800">Two-Factor Authentication is <strong>enabled</strong></span>
+                        </div>
+                        <br />
+                        <form asp-action="DisableTwoFactor" asp-controller="MyProfile" method="post" style="display:inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-red-700 shadow-xs ring-1 ring-inset ring-red-300 hover:bg-red-50">Disable 2FA</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="rounded-md bg-yellow-50 p-3 ring-1 ring-inset ring-yellow-600/20 mb-3 inline-block">
+                            <span class="text-sm text-yellow-800">Two-Factor Authentication is <strong>disabled</strong></span>
+                        </div>
+                        <br />
+                        <form asp-action="EnableTwoFactor" asp-controller="MyProfile" method="post" style="display:inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-green-700 shadow-xs ring-1 ring-inset ring-green-300 hover:bg-green-50">Enable 2FA</button>
+                        </form>
+                        <p class="text-xs text-gray-500 mt-2">When enabled, you'll receive a verification code via email each time you log in.</p>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="border-t border-gray-100 pt-6">
+                    <h2 class="text-base font-semibold text-gray-900 mb-2">Two-Factor Authentication</h2>
+                    <div class="rounded-md bg-blue-50 p-3 ring-1 ring-inset ring-blue-600/20">
+                        <p class="text-sm text-blue-800">Two-Factor Authentication is not available for external login accounts. Your external provider handles authentication security.</p>
+                    </div>
+                </div>
+            }
+
+            @if (Model.IsGoogleAuthEnabled)
+            {
+                <div class="border-t border-gray-100 pt-6">
+                    <h2 class="text-base font-semibold text-gray-900 mb-3">Google Account</h2>
+                    @if (Model.HasGoogleAccount)
+                    {
+                        <div class="flex items-center gap-x-3">
+                            <span class="rounded-md bg-green-50 px-3 py-2 text-sm font-semibold text-green-700 ring-1 ring-inset ring-green-300">Google Account Connected</span>
+                            <a asp-action="DisconnectGoogle" asp-controller="MyProfile" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-red-700 shadow-xs ring-1 ring-inset ring-red-300 hover:bg-red-50">Disconnect Google</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <a asp-action="ConnectGoogle" asp-controller="MyProfile" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50">Link Google Account</a>
+                    }
+                </div>
+            }
+
+            @if (Model.IsMicrosoftAuthEnabled)
+            {
+                <div class="border-t border-gray-100 pt-6">
+                    <h2 class="text-base font-semibold text-gray-900 mb-3">Microsoft Account</h2>
+                    @if (Model.HasMicrosoftAccount)
+                    {
+                        <div class="flex items-center gap-x-3">
+                            <span class="rounded-md bg-green-50 px-3 py-2 text-sm font-semibold text-green-700 ring-1 ring-inset ring-green-300">Microsoft Account Connected</span>
+                            <a asp-action="DisconnectMicrosoft" asp-controller="MyProfile" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-red-700 shadow-xs ring-1 ring-inset ring-red-300 hover:bg-red-50">Disconnect Microsoft</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <a asp-action="ConnectMicrosoft" asp-controller="MyProfile" class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50">Link Microsoft Account</a>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var claimsLoaded = false, rolesLoaded = false, tenantMembershipsLoaded = false, companyMembershipsLoaded = false;
+
+function loadClaims() {
+    if (claimsLoaded) return; claimsLoaded = true;
+    fetch('@Url.Action("GetMyClaimsTableData","MyProfile")?offset=0&limit=200')
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            var tbody = document.getElementById('tbody-claims');
+            var rows = res.rows || [];
+            if (!rows.length) { tbody.innerHTML = '<tr><td colspan="2" class="px-6 py-4 text-sm text-gray-500 text-center">No claims found.</td></tr>'; return; }
+            rows.forEach(function(row) {
+                var tr = document.createElement('tr'); tr.className = 'hover:bg-gray-50';
+                ['claimType','claimValue'].forEach(function(col) { var td = document.createElement('td'); td.className = 'px-6 py-4 text-sm text-gray-900'; td.textContent = row[col] || ''; tr.appendChild(td); });
+                tbody.appendChild(tr);
+            });
+        });
+}
+
+function loadRoles() {
+    if (rolesLoaded) return; rolesLoaded = true;
+    fetch('@Url.Action("GetMyRolesTableData","MyProfile")?offset=0&limit=200')
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            var tbody = document.getElementById('tbody-roles');
+            var rows = res.rows || [];
+            if (!rows.length) { tbody.innerHTML = '<tr><td class="px-6 py-4 text-sm text-gray-500 text-center">No roles found.</td></tr>'; return; }
+            rows.forEach(function(row) {
+                var tr = document.createElement('tr'); tr.className = 'hover:bg-gray-50';
+                var td = document.createElement('td'); td.className = 'px-6 py-4 text-sm text-gray-900'; td.textContent = row.role || '';
+                tr.appendChild(td); tbody.appendChild(tr);
+            });
+        });
+}
+
+function loadTenantMemberships() {
+    if (tenantMembershipsLoaded) return; tenantMembershipsLoaded = true;
+    fetch('@Url.Action("GetMyTenantMembershipsTableData","MyProfile")?offset=0&limit=200')
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            var tbody = document.getElementById('tbody-tenantMemberships');
+            var rows = res.rows || [];
+            if (!rows.length) { tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-sm text-gray-500 text-center">No tenant memberships found.</td></tr>'; return; }
+            rows.forEach(function(row) {
+                var tr = document.createElement('tr'); tr.className = 'hover:bg-gray-50';
+                ['tenantName','roles','status'].forEach(function(col) { var td = document.createElement('td'); td.className = 'px-6 py-4 text-sm text-gray-900'; td.textContent = row[col] || ''; tr.appendChild(td); });
+                var tdAct = document.createElement('td'); tdAct.className = 'px-6 py-4 text-right text-sm';
+                var a1 = document.createElement('a'); a1.href = '/MyProfile/ManageTenant/' + row.tenantId; a1.className = 'text-indigo-600 hover:text-indigo-500 mr-3'; a1.textContent = 'Tenant';
+                var a2 = document.createElement('a'); a2.href = '/Memberships/' + row.membershipId; a2.className = 'text-indigo-600 hover:text-indigo-500'; a2.textContent = 'Membership';
+                tdAct.appendChild(a1); tdAct.appendChild(a2); tr.appendChild(tdAct); tbody.appendChild(tr);
+            });
+        });
+}
+
+function loadCompanyMemberships() {
+    if (companyMembershipsLoaded) return; companyMembershipsLoaded = true;
+    fetch('@Url.Action("GetMyCompanyMembershipsTableData","MyProfile")?offset=0&limit=200')
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            var tbody = document.getElementById('tbody-companyMemberships');
+            var rows = res.rows || [];
+            if (!rows.length) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-sm text-gray-500 text-center">No company memberships found.</td></tr>'; return; }
+            rows.forEach(function(row) {
+                var tr = document.createElement('tr'); tr.className = 'hover:bg-gray-50';
+                ['tenantName','companyName','roles','status'].forEach(function(col) { var td = document.createElement('td'); td.className = 'px-6 py-4 text-sm text-gray-900'; td.textContent = row[col] || ''; tr.appendChild(td); });
+                var tdAct = document.createElement('td'); tdAct.className = 'px-6 py-4 text-right text-sm';
+                var a1 = document.createElement('a'); a1.href = '/MyProfile/ManageTenantCompanyDetails/' + row.companyId; a1.className = 'text-indigo-600 hover:text-indigo-500 mr-3'; a1.textContent = 'Company';
+                var a2 = document.createElement('a'); a2.href = '/Memberships/' + row.membershipId; a2.className = 'text-indigo-600 hover:text-indigo-500'; a2.textContent = 'Membership';
+                tdAct.appendChild(a1); tdAct.appendChild(a2); tr.appendChild(tdAct); tbody.appendChild(tr);
+            });
+        });
+}
+</script>
+}
