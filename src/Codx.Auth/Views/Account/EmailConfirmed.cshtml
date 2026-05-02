@@ -37,6 +37,35 @@
                             </div>
                         </div>
 
+                        @if (!string.IsNullOrEmpty(Model.ReturnUrl))
+                        {
+                            var loginUrl = Url.Action("Login", "Account", new { returnUrl = Model.ReturnUrl });
+                            <p class="text-muted">
+                                Redirecting you back to the application in <span id="redirect-countdown">5</span> seconds...
+                            </p>
+                            <div id="auto-redirect"
+                                 data-url="@loginUrl"
+                                 data-seconds="5"
+                                 style="display:none;">
+                            </div>
+                            <script>
+                                (function () {
+                                    var el = document.getElementById('auto-redirect');
+                                    var target = el.getAttribute('data-url');
+                                    var countdown = parseInt(el.getAttribute('data-seconds'), 10);
+                                    var display = document.getElementById('redirect-countdown');
+                                    var interval = setInterval(function () {
+                                        countdown--;
+                                        if (display) display.textContent = countdown;
+                                        if (countdown <= 0) {
+                                            clearInterval(interval);
+                                            window.location.href = target;
+                                        }
+                                    }, 1000);
+                                })();
+                            </script>
+                        }
+
                         <div class="d-grid gap-2">
                             <a asp-action="Login" asp-route-returnUrl="@Model.ReturnUrl" class="btn btn-success btn-lg">
                                 <i class="fas fa-sign-in-alt me-2"></i>

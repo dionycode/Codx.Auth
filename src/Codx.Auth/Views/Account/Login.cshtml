@@ -65,7 +65,10 @@
                             <button class="btn btn-secondary" name="button" value="cancel">Cancel</button>
                         </form>
                         <div class="mt-3">
-                            <a asp-controller="Account" asp-action="Register" class="register-link-small">Don't have an account? Register</a>
+                            <a asp-controller="Account"
+                               asp-action="Register"
+                               asp-route-returnUrl="@Model.ReturnUrl"
+                               class="register-link-small">Don't have an account? Register</a>
                         </div>
 
                         <hr />

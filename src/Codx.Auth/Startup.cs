@@ -96,6 +96,7 @@ namespace Codx.Auth
             services.AddScoped<IWorkspaceSessionStore, EfWorkspaceSessionStore>();
             services.AddScoped<IAuditService, DbAuditService>();
             services.AddScoped<IInvitationService, InvitationService>();
+            services.AddScoped<IWorkspaceInitializationService, WorkspaceInitializationService>();
             services.AddHostedService<InvitationExpiryService>();
             services.AddProblemDetails();
 

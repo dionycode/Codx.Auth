@@ -44,6 +44,7 @@ namespace Codx.Auth.Controllers
         private readonly IInvitationService _invitationService;
         private readonly IDataProtectionProvider _dataProtection;
         private readonly IAuditService _auditService;
+        private readonly IWorkspaceInitializationService _workspaceInitService;
 
         public AccountController(
             UserManager<ApplicationUser> userManager,
@@ -57,7 +58,8 @@ namespace Codx.Auth.Controllers
             IOptions<AuthenticationSettings> authSettings,
             IInvitationService invitationService,
             IDataProtectionProvider dataProtection,
-            IAuditService auditService)
+            IAuditService auditService,
+            IWorkspaceInitializationService workspaceInitService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -71,6 +73,7 @@ namespace Codx.Auth.Controllers
             _invitationService = invitationService;
             _dataProtection = dataProtection;
             _auditService = auditService;
+            _workspaceInitService = workspaceInitService;
         }
 
         // ─── Invitation landing ──────────────────────────────────────────────
@@ -257,13 +260,19 @@ namespace Codx.Auth.Controllers
                             protocol: Request.Scheme);
                         var (emailSuccess, _) = await _accountService.SendEmailVerificationAsync(user, callbackUrl);
                         if (emailSuccess)
-                            return RedirectToAction("EmailVerificationSent", new { email = user.Email });
+                            return RedirectToAction("EmailVerificationSent", new { email = user.Email, returnUrl = model.ReturnUrl });
                         ModelState.AddModelError(string.Empty, "Account created but failed to send verification email. Please contact support.");
                     }
                     else
                     {
                         var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                         await _userManager.ConfirmEmailAsync(user, token);
+                        var autoConfirmContext = await _interaction.GetAuthorizationContextAsync(model.ReturnUrl);
+                        if (autoConfirmContext != null)
+                        {
+                            await _workspaceInitService.InitializeUserForApplicationAsync(
+                                user, autoConfirmContext.Client.ClientId, HttpContext.RequestAborted);
+                        }
                         TempData["RegistrationSuccess"] = "Your account has been created successfully. You can now sign in.";
                         return RedirectToAction("Login", new { returnUrl = model.ReturnUrl });
                     }
@@ -331,7 +340,17 @@ namespace Codx.Auth.Controllers
             }
 
             var result = await _userManager.ConfirmEmailAsync(user, token);
-            
+
+            if (result.Succeeded && !string.IsNullOrEmpty(returnUrl))
+            {
+                var authContext = await _interaction.GetAuthorizationContextAsync(returnUrl);
+                if (authContext != null)
+                {
+                    await _workspaceInitService.InitializeUserForApplicationAsync(
+                        user, authContext.Client.ClientId, HttpContext.RequestAborted);
+                }
+            }
+
             var model = new EmailConfirmedViewModel
             {
                 Success = result.Succeeded,
