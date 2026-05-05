@@ -1,5 +1,6 @@
 using Codx.Auth.Data.Contexts;
 using Codx.Auth.Data.Entities.AspNet;
+using Codx.Auth.Models;
 using Codx.Auth.Models.Email;
 using Codx.Auth.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Codx.Auth.Services
@@ -20,17 +22,20 @@ namespace Codx.Auth.Services
         private readonly UserDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IEmailService _emailService;
+        private readonly IEmailTemplateService _templateService;
         private readonly ILogger<TwoFactorService> _logger;
 
         public TwoFactorService(
             UserDbContext context,
             UserManager<ApplicationUser> userManager,
             IEmailService emailService,
+            IEmailTemplateService templateService,
             ILogger<TwoFactorService> logger)
         {
             _context = context;
             _userManager = userManager;
             _emailService = emailService;
+            _templateService = templateService;
             _logger = logger;
         }
 
@@ -44,30 +49,35 @@ namespace Codx.Auth.Services
             return (randomNumber % 1000000).ToString("D6");
         }
 
-        public async Task<(bool success, string code, string message)> SendVerificationCodeAsync(Guid userId, string email, string userName = null)
+        public async Task<(bool success, string code, string message)> SendVerificationCodeAsync(Guid userId, string email, string userName = null, Guid? tenantId = null, CancellationToken ct = default)
         {
             try
             {
-                // Generate verification code
                 var code = GenerateVerificationCode();
-
-                // Store code in database
                 await StoreVerificationCodeAsync(userId, code);
 
-                // Create email message
                 var displayName = !string.IsNullOrEmpty(userName) ? userName : email;
                 var subject = "Your Two-Factor Authentication Code";
-                var body = CreateVerificationEmailBody(displayName, code);
+
+                var renderContext = new EmailTemplateRenderContext(
+                    UserName:      displayName,
+                    UserEmail:     email,
+                    TenantName:    string.Empty,
+                    CompanyName:   string.Empty,
+                    TwoFactorCode: code
+                );
+
+                var body = await _templateService.GetResolvedBodyAsync(
+                    EmailTemplateType.TwoFactor, tenantId, renderContext, ct);
 
                 var emailMessage = new EmailMessage
                 {
-                    To = email,
+                    To      = email,
                     Subject = subject,
-                    Body = body,
-                    IsHtml = true
+                    Body    = body,
+                    IsHtml  = true
                 };
 
-                // Send email
                 var emailResult = await _emailService.SendEmailAsync(emailMessage);
 
                 if (emailResult.Success)
@@ -77,12 +87,10 @@ namespace Codx.Auth.Services
                 }
                 else
                 {
-                    _logger.LogError("Failed to send 2FA verification code to user {UserId} at {Email}: {Error}", 
+                    _logger.LogError("Failed to send 2FA verification code to user {UserId} at {Email}: {Error}",
                         userId, email, emailResult.Message);
-                    
-                    // Clear the stored code since email failed
+
                     await ClearVerificationCodeAsync(userId);
-                    
                     return (false, string.Empty, $"Failed to send verification code: {emailResult.Message}");
                 }
             }
@@ -190,95 +198,6 @@ namespace Codx.Auth.Services
                 _logger.LogError(ex, "Exception occurred while clearing 2FA codes for user {UserId}", userId);
                 throw;
             }
-        }
-
-        private string CreateVerificationEmailBody(string displayName, string code)
-        {
-            return $@"
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset=""utf-8"">
-    <title>Two-Factor Authentication Code</title>
-    <style>
-        body {{
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }}
-        .header {{
-            background-color: #007bff;
-            color: white;
-            padding: 20px;
-            text-align: center;
-            border-radius: 5px 5px 0 0;
-        }}
-        .content {{
-            background-color: #f8f9fa;
-            padding: 30px;
-            border-radius: 0 0 5px 5px;
-        }}
-        .verification-code {{
-            background-color: #e9ecef;
-            border: 2px solid #007bff;
-            border-radius: 5px;
-            font-size: 32px;
-            font-weight: bold;
-            text-align: center;
-            padding: 20px;
-            margin: 20px 0;
-            letter-spacing: 5px;
-            color: #007bff;
-        }}
-        .warning {{
-            background-color: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 5px;
-            padding: 15px;
-            margin: 20px 0;
-        }}
-        .footer {{
-            text-align: center;
-            margin-top: 30px;
-            font-size: 12px;
-            color: #6c757d;
-        }}
-    </style>
-</head>
-<body>
-    <div class=""header"">
-        <h1>Two-Factor Authentication</h1>
-    </div>
-    <div class=""content"">
-        <h2>Hello {displayName},</h2>
-        <p>You are attempting to sign in to your account. To complete the login process, please use the verification code below:</p>
-        
-        <div class=""verification-code"">
-            {code}
-        </div>
-        
-        <div class=""warning"">
-            <strong>Important:</strong>
-            <ul>
-                <li>This code will expire in 10 minutes</li>
-                <li>Do not share this code with anyone</li>
-                <li>If you did not request this code, please secure your account immediately</li>
-            </ul>
-        </div>
-        
-        <p>Enter this code on the verification page to complete your login.</p>
-        
-        <p>Best regards,<br>Codx Auth System</p>
-    </div>
-    <div class=""footer"">
-        <p>This is an automated message. Please do not reply to this email.</p>
-        <p>If you have any questions, please contact our support team.</p>
-    </div>
-</body>
-</html>";
         }
     }
 }

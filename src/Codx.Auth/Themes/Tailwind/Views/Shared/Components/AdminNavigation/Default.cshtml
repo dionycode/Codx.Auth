@@ -51,6 +51,13 @@
                                     Roles
                                 </a>
                             </li>
+                            <li>
+                                <a asp-area="" asp-controller="EmailTemplates" asp-action="Index"
+                                   aria-current="@(currentController == "EmailTemplates" ? "page" : null)"
+                                   class="@(currentController == "EmailTemplates" ? "bg-gray-50 text-indigo-600" : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600") block rounded-md py-2 pl-9 pr-2 text-sm font-medium">
+                                    Email Templates
+                                </a>
+                            </li>
                         </ul>
                     </li>
 

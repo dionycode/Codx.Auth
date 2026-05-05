@@ -1,0 +1,177 @@
+@model Codx.Auth.ViewModels.EmailTemplates.EmailTemplateEditViewModel
+
+@{
+    ViewData["Title"] = $"Edit — {Model.TemplateTypeLabel}";
+    bool isPlatformAdmin = User.IsInRole("PlatformAdministrator");
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index","Home")">Home</a></li>
+        @if (isPlatformAdmin && !Model.TenantId.HasValue)
+        {
+            <li class="breadcrumb-item"><a asp-action="Index">Email Templates</a></li>
+        }
+        else if (isPlatformAdmin)
+        {
+            <li class="breadcrumb-item"><a href="@Url.Action("Index","Tenants")">Tenants</a></li>
+            <li class="breadcrumb-item"><a asp-controller="Tenants" asp-action="Details" asp-route-id="@Model.TenantId">@Model.TenantName</a></li>
+            <li class="breadcrumb-item"><a asp-action="Index" asp-route-tenantId="@Model.TenantId">Email Templates</a></li>
+        }
+        else
+        {
+            <li class="breadcrumb-item"><a href="@Url.Action("Index","MyProfile")">My Profile</a></li>
+            <li class="breadcrumb-item"><a asp-controller="MyProfile" asp-action="ManageTenant" asp-route-id="@Model.TenantId">@Model.TenantName</a></li>
+            <li class="breadcrumb-item"><a asp-action="Index" asp-route-tenantId="@Model.TenantId">Email Templates</a></li>
+        }
+        <li class="breadcrumb-item active" aria-current="page">Edit @Model.TemplateTypeLabel</li>
+    </ol>
+</nav>
+
+<div class="row">
+
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Edit — <strong>@Model.TemplateTypeLabel</strong></span>
+                <span class="badge bg-secondary">Current source: @Model.SourceLabel</span>
+            </div>
+            <div class="card-body">
+
+                <partial name="_ValidationSummary" />
+
+                <form asp-action="Edit" method="post" id="editForm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="TenantId" />
+                    <input type="hidden" asp-for="TemplateType" />
+                    <input type="hidden" asp-for="TenantName" />
+                    <input type="hidden" asp-for="TemplateTypeLabel" />
+                    <input type="hidden" asp-for="SourceLabel" />
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Body" class="form-label fw-semibold">Template Body (HTML)</label>
+                        <textarea asp-for="Body" class="form-control font-monospace" rows="18" id="templateBody"></textarea>
+                        <span asp-validation-for="Body" class="text-danger small"></span>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <input type="submit" class="btn btn-primary" value="Save" />
+                        <button type="button" class="btn btn-outline-secondary" id="previewBtn">Preview</button>
+                        <a asp-action="Index" asp-route-tenantId="@Model.TenantId" class="btn btn-outline-dark">Cancel</a>
+                    </div>
+                </form>
+
+                @* Hidden form used only to obtain an antiforgery token for the AJAX preview call *@
+                <form id="previewTokenForm" style="display:none">
+                    @Html.AntiForgeryToken()
+                </form>
+
+            </div>
+        </div>
+
+        <div class="card mt-3" id="previewCard" style="display:none">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Preview <small class="text-muted">(sample data)</small></span>
+                <button type="button" class="btn-close" id="closePreview" aria-label="Close"></button>
+            </div>
+            <div class="card-body p-0">
+                <div id="previewError" class="alert alert-danger m-3" style="display:none"></div>
+                <div id="previewWarnings" class="alert alert-warning m-3" style="display:none">
+                    <strong>Unrecognized placeholders (left verbatim):</strong>
+                    <ul id="previewWarningsList" class="mb-0 mt-1"></ul>
+                </div>
+                <iframe id="previewFrame" style="width:100%; height:480px; border:none;" sandbox="allow-same-origin"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">Supported Placeholders</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Token</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.PlaceholderReference)
+                        {
+                            <tr class="@(item.IsRequired ? "table-warning" : "")">
+                                <td><code>@item.Token</code></td>
+                                <td>
+                                    @item.Description
+                                    @if (item.IsRequired)
+                                    {
+                                        <span class="badge bg-danger">required</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const previewBtn      = document.getElementById('previewBtn');
+            const previewCard     = document.getElementById('previewCard');
+            const previewFrame    = document.getElementById('previewFrame');
+            const previewError    = document.getElementById('previewError');
+            const previewWarnings = document.getElementById('previewWarnings');
+            const warningsList    = document.getElementById('previewWarningsList');
+            const closeBtn        = document.getElementById('closePreview');
+
+            previewBtn.addEventListener('click', async function () {
+                const body = document.getElementById('templateBody').value;
+                previewError.style.display    = 'none';
+                previewWarnings.style.display = 'none';
+                previewCard.style.display     = 'block';
+
+                const formData = new FormData();
+                formData.append('type',     '@Model.TemplateType');
+                formData.append('body',     body);
+                formData.append('tenantId', '@(Model.TenantId?.ToString() ?? "")');
+                const tokenInput = document.querySelector('#previewTokenForm input[name="__RequestVerificationToken"]');
+                formData.append('__RequestVerificationToken', tokenInput ? tokenInput.value : '');
+
+                const response = await fetch('@Url.Action("Preview")', {
+                    method: 'POST',
+                    body:   formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    previewFrame.style.display = 'block';
+                    previewFrame.srcdoc = data.rendered;
+
+                    if (data.warnings && data.warnings.length > 0) {
+                        warningsList.innerHTML = '';
+                        data.warnings.forEach(function (w) {
+                            const li = document.createElement('li');
+                            li.textContent = w;
+                            warningsList.appendChild(li);
+                        });
+                        previewWarnings.style.display = 'block';
+                    }
+                } else {
+                    const msg = await response.text();
+                    previewFrame.style.display = 'none';
+                    previewError.style.display = 'block';
+                    previewError.textContent   = msg || 'Preview failed.';
+                }
+            });
+
+            closeBtn.addEventListener('click', function () {
+                previewCard.style.display = 'none';
+            });
+        })();
+    </script>
+}

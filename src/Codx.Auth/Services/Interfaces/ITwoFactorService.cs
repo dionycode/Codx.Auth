@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Codx.Auth.Services.Interfaces
@@ -23,8 +24,10 @@ namespace Codx.Auth.Services.Interfaces
         /// <param name="userId">User ID</param>
         /// <param name="email">User email address</param>
         /// <param name="userName">User name for personalization</param>
+        /// <param name="tenantId">Optional tenant ID for template resolution</param>
+        /// <param name="ct">Cancellation token</param>
         /// <returns>Success result and code (for testing purposes)</returns>
-        Task<(bool success, string code, string message)> SendVerificationCodeAsync(Guid userId, string email, string userName = null);
+        Task<(bool success, string code, string message)> SendVerificationCodeAsync(Guid userId, string email, string userName = null, Guid? tenantId = null, CancellationToken ct = default);
 
         /// <summary>
         /// Verify the provided code against the stored code for the user
