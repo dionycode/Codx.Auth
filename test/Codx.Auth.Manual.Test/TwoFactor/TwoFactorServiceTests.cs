@@ -91,7 +91,7 @@ namespace Codx.Auth.Manual.Test.TwoFactor
             }
 
             // Not needed for basic code generation tests
-            public Task<(bool success, string code, string message)> SendVerificationCodeAsync(Guid userId, string email, string userName = null) => Task.FromResult((false, string.Empty, string.Empty));
+            public Task<(bool success, string code, string message)> SendVerificationCodeAsync(Guid userId, string email, string userName = null, Guid? tenantId = null, System.Threading.CancellationToken ct = default) => Task.FromResult((false, string.Empty, string.Empty));
             public Task<bool> ValidateVerificationCodeAsync(Guid userId, string providedCode) => Task.FromResult(false);
             public Task StoreVerificationCodeAsync(Guid userId, string code, int expirationMinutes = 10) => Task.CompletedTask;
             public Task ClearVerificationCodeAsync(Guid userId) => Task.CompletedTask;

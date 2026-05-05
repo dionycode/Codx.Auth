@@ -3,6 +3,7 @@ using Codx.Auth.Data.Entities.AspNet;
 using Codx.Auth.Data.Entities.Enterprise;
 using Codx.Auth.Extensions;
 using Microsoft.EntityFrameworkCore;
+using Codx.Auth.Models;
 using Codx.Auth.Models.Email;
 using Codx.Auth.Services.Interfaces;
 using Codx.Auth.ViewModels.Account;
@@ -11,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Codx.Auth.Services
@@ -19,7 +21,7 @@ namespace Codx.Auth.Services
     {
         Task<(RegisterResponse result, ApplicationUser user)> RegisterAsync(RegisterRequest request);
         Task<(RegisterResponse result, ApplicationUser user)> RegisterExternalUserAsync(string email, string firstName, string middleName, string lastName, string provider, string providerUserId);
-        Task<(bool success, string message)> SendEmailVerificationAsync(ApplicationUser user, string callbackUrl);
+        Task<(bool success, string message)> SendEmailVerificationAsync(ApplicationUser user, string callbackUrl, Guid? tenantId = null, CancellationToken ct = default);
     }
 
     public class AccountService : IAccountService
@@ -28,17 +30,20 @@ namespace Codx.Auth.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IEmailService _emailService;
         private readonly IAuditService _auditService;
+        private readonly IEmailTemplateService _templateService;
         
         public AccountService(
             UserDbContext context, 
             UserManager<ApplicationUser> userManager,
             IEmailService emailService,
-            IAuditService auditService)
+            IAuditService auditService,
+            IEmailTemplateService templateService)
         {
             _context = context;
             _userManager = userManager;
             _emailService = emailService;
             _auditService = auditService;
+            _templateService = templateService;
         }
 
         public async Task<(RegisterResponse result, ApplicationUser user)> RegisterAsync(RegisterRequest request)
@@ -108,133 +113,42 @@ namespace Codx.Auth.Services
             return (new RegisterResponse { Success = false, Errors = errors }, null);
         }
 
-        public async Task<(bool success, string message)> SendEmailVerificationAsync(ApplicationUser user, string callbackUrl)
+        public async Task<(bool success, string message)> SendEmailVerificationAsync(ApplicationUser user, string callbackUrl, Guid? tenantId = null, CancellationToken ct = default)
         {
             try
             {
                 var displayName = user.GetDisplayName();
                 var subject = "Confirm Your Email Address";
-                var body = CreateEmailVerificationBody(displayName, callbackUrl);
+
+                var renderContext = new Models.EmailTemplateRenderContext(
+                    UserName:         displayName,
+                    UserEmail:        user.Email ?? string.Empty,
+                    TenantName:       string.Empty,
+                    CompanyName:      string.Empty,
+                    VerificationLink: callbackUrl
+                );
+
+                var body = await _templateService.GetResolvedBodyAsync(
+                    Models.EmailTemplateType.EmailVerification, tenantId, renderContext, ct);
 
                 var emailMessage = new EmailMessage
                 {
-                    To = user.Email,
+                    To      = user.Email,
                     Subject = subject,
-                    Body = body,
-                    IsHtml = true
+                    Body    = body,
+                    IsHtml  = true
                 };
 
                 var result = await _emailService.SendEmailAsync(emailMessage);
                 
-                if (result.Success)
-                {
-                    return (true, "Verification email sent successfully");
-                }
-                else
-                {
-                    return (false, $"Failed to send verification email: {result.Message}");
-                }
+                return result.Success
+                    ? (true, "Verification email sent successfully")
+                    : (false, $"Failed to send verification email: {result.Message}");
             }
             catch (Exception ex)
             {
                 return (false, $"Error sending verification email: {ex.Message}");
             }
-        }
-
-        private string CreateEmailVerificationBody(string displayName, string callbackUrl)
-        {
-            return $@"
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset=""utf-8"">
-    <title>Email Verification</title>
-    <style>
-        body {{
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }}
-        .header {{
-            background-color: #007bff;
-            color: white;
-            padding: 20px;
-            text-align: center;
-            border-radius: 5px 5px 0 0;
-        }}
-        .content {{
-            background-color: #f8f9fa;
-            padding: 30px;
-            border-radius: 0 0 5px 5px;
-        }}
-        .button {{
-            display: inline-block;
-            padding: 15px 30px;
-            background-color: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            margin: 20px 0;
-            font-weight: bold;
-        }}
-        .button:hover {{
-            background-color: #0056b3;
-        }}
-        .warning {{
-            background-color: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 5px;
-            padding: 15px;
-            margin: 20px 0;
-        }}
-        .footer {{
-            text-align: center;
-            margin-top: 30px;
-            font-size: 12px;
-            color: #6c757d;
-        }}
-        .link {{
-            word-break: break-all;
-            color: #007bff;
-            font-size: 12px;
-        }}
-    </style>
-</head>
-<body>
-    <div class=""header"">
-        <h1>Welcome to Codx Auth!</h1>
-    </div>
-    <div class=""content"">
-        <h2>Hello {displayName},</h2>
-        <p>Thank you for registering with Codx Auth. To complete your registration, please verify your email address by clicking the button below:</p>
-        
-        <div style=""text-align: center;"">
-            <a href=""{callbackUrl}"" class=""button"">Verify Email Address</a>
-        </div>
-        
-        <div class=""warning"">
-            <strong>Important:</strong>
-            <ul>
-                <li>This link will expire in 24 hours</li>
-                <li>If you did not create this account, please ignore this email</li>
-                <li>Do not share this link with anyone</li>
-            </ul>
-        </div>
-        
-        <p>If the button above doesn't work, copy and paste the following link into your browser:</p>
-        <p class=""link"">{callbackUrl}</p>
-        
-        <p>Best regards,<br>Codx Auth Team</p>
-    </div>
-    <div class=""footer"">
-        <p>This is an automated message. Please do not reply to this email.</p>
-        <p>If you have any questions, please contact our support team.</p>
-    </div>
-</body>
-</html>";
         }
 
         private async Task InitializeNewUserAsync(ApplicationUser user)

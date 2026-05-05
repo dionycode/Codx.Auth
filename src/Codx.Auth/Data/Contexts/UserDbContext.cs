@@ -44,6 +44,7 @@ namespace Codx.Auth.Data.Contexts
         public DbSet<UserApplicationRole> UserApplicationRoles { get; set; }
         public DbSet<WorkspaceSession> WorkspaceSessions { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
+        public DbSet<EmailTemplate> EmailTemplates { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -288,6 +289,31 @@ namespace Codx.Auth.Data.Contexts
                 entity.HasIndex(e => e.OccurredAt);
                 entity.HasIndex(e => new { e.UserId, e.EventType });
                 // No FK constraints on nullable ID columns — audit entries must survive referential changes
+            });
+
+            // --- EmailTemplate ---
+            builder.Entity<EmailTemplate>(entity =>
+            {
+                entity.ToTable("EmailTemplates");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.TemplateType)
+                    .HasMaxLength(50)
+                    .IsRequired();
+
+                entity.Property(e => e.Body)
+                    .HasColumnType("nvarchar(max)")
+                    .IsRequired();
+
+                entity.HasIndex(e => new { e.TenantId, e.TemplateType })
+                    .IsUnique()
+                    .HasDatabaseName("IX_EmailTemplates_TenantId_TemplateType");
+
+                entity.HasOne(e => e.Tenant)
+                    .WithMany()
+                    .HasForeignKey(e => e.TenantId)
+                    .IsRequired(false)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
         }

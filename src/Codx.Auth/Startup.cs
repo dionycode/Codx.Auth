@@ -55,6 +55,10 @@ namespace Codx.Auth
             // Add Two-Factor Authentication Service
             services.AddScoped<ITwoFactorService, TwoFactorService>();
 
+            // Email Template Services (spec 003)
+            services.AddSingleton<BuiltInEmailTemplateProvider>();
+            services.AddScoped<IEmailTemplateService, EmailTemplateService>();
+
             // Configure Authentication Settings
             services.Configure<AuthenticationSettings>(Configuration.GetSection(AuthenticationSettings.SectionName));
 
@@ -195,6 +199,16 @@ namespace Codx.Auth
                 options.AddPolicy("TenantOrCompanyAdmin", policy =>
                     policy.RequireAuthenticatedUser()
                           .RequireClaim("workspace_role", "COMPANY_ADMIN", "TENANT_ADMIN", "TENANT_OWNER"));
+
+                // EmailTemplateAccess: PlatformAdministrator or tenant-level admins (TENANT_ADMIN, TENANT_OWNER).
+                // Used for the preview endpoint — callers do not need a workspace token.
+                options.AddPolicy("EmailTemplateAccess", policy =>
+                    policy.RequireAuthenticatedUser()
+                          .AddAuthenticationSchemes(IdentityServerConstants.LocalApi.AuthenticationScheme)
+                          .RequireAssertion(ctx =>
+                              ctx.User.IsInRole("PlatformAdministrator") ||
+                              ctx.User.HasClaim("workspace_role", "TENANT_ADMIN") ||
+                              ctx.User.HasClaim("workspace_role", "TENANT_OWNER")));
             });
 
             // Add CORS services
