@@ -23,7 +23,7 @@ namespace Codx.Auth.Services
         Task<EmailTemplate> UpsertTenantTemplateAsync(EmailTemplateType type, Guid tenantId, string body, Guid actorUserId, CancellationToken ct = default);
         Task DeleteTenantTemplateAsync(EmailTemplateType type, Guid tenantId, CancellationToken ct = default);
 
-        string RenderPreview(EmailTemplateType type, string body);
+        PreviewResult RenderPreview(EmailTemplateType type, string body);
 
         IReadOnlyList<string> ValidateTemplate(EmailTemplateType type, string body);
     }

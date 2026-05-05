@@ -76,6 +76,10 @@
             </div>
             <div class="card-body p-0">
                 <div id="previewError" class="alert alert-danger m-3" style="display:none"></div>
+                <div id="previewWarnings" class="alert alert-warning m-3" style="display:none">
+                    <strong>Unrecognized placeholders (left verbatim):</strong>
+                    <ul id="previewWarningsList" class="mb-0 mt-1"></ul>
+                </div>
                 <iframe id="previewFrame" style="width:100%; height:480px; border:none;" sandbox="allow-same-origin"></iframe>
             </div>
         </div>
@@ -93,36 +97,19 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @if (Model.TemplateType == "EmailVerification")
+                        @foreach (var item in Model.PlaceholderReference)
                         {
-                            <tr class="table-warning">
-                                <td><code>{{VerificationLink}}</code></td>
-                                <td>Verify link <span class="badge bg-danger">required</span></td>
+                            <tr class="@(item.IsRequired ? "table-warning" : "")">
+                                <td><code>@item.Token</code></td>
+                                <td>
+                                    @item.Description
+                                    @if (item.IsRequired)
+                                    {
+                                        <span class="badge bg-danger">required</span>
+                                    }
+                                </td>
                             </tr>
                         }
-                        @if (Model.TemplateType == "TwoFactor")
-                        {
-                            <tr class="table-warning">
-                                <td><code>{{TwoFactorCode}}</code></td>
-                                <td>OTP code <span class="badge bg-danger">required</span></td>
-                            </tr>
-                        }
-                        <tr>
-                            <td><code>{{UserName}}</code></td>
-                            <td>Recipient display name</td>
-                        </tr>
-                        <tr>
-                            <td><code>{{UserEmail}}</code></td>
-                            <td>Recipient email address</td>
-                        </tr>
-                        <tr>
-                            <td><code>{{TenantName}}</code></td>
-                            <td>Tenant name</td>
-                        </tr>
-                        <tr>
-                            <td><code>{{CompanyName}}</code></td>
-                            <td>Company name</td>
-                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -134,16 +121,19 @@
 @section Scripts {
     <script>
         (function () {
-            const previewBtn   = document.getElementById('previewBtn');
-            const previewCard  = document.getElementById('previewCard');
-            const previewFrame = document.getElementById('previewFrame');
-            const previewError = document.getElementById('previewError');
-            const closeBtn     = document.getElementById('closePreview');
+            const previewBtn      = document.getElementById('previewBtn');
+            const previewCard     = document.getElementById('previewCard');
+            const previewFrame    = document.getElementById('previewFrame');
+            const previewError    = document.getElementById('previewError');
+            const previewWarnings = document.getElementById('previewWarnings');
+            const warningsList    = document.getElementById('previewWarningsList');
+            const closeBtn        = document.getElementById('closePreview');
 
             previewBtn.addEventListener('click', async function () {
                 const body = document.getElementById('templateBody').value;
-                previewError.style.display = 'none';
-                previewCard.style.display  = 'block';
+                previewError.style.display    = 'none';
+                previewWarnings.style.display = 'none';
+                previewCard.style.display     = 'block';
 
                 const formData = new FormData();
                 formData.append('type',     '@Model.TemplateType');
@@ -158,9 +148,19 @@
                 });
 
                 if (response.ok) {
-                    const html = await response.text();
+                    const data = await response.json();
                     previewFrame.style.display = 'block';
-                    previewFrame.srcdoc = html;
+                    previewFrame.srcdoc = data.rendered;
+
+                    if (data.warnings && data.warnings.length > 0) {
+                        warningsList.innerHTML = '';
+                        data.warnings.forEach(function (w) {
+                            const li = document.createElement('li');
+                            li.textContent = w;
+                            warningsList.appendChild(li);
+                        });
+                        previewWarnings.style.display = 'block';
+                    }
                 } else {
                     const msg = await response.text();
                     previewFrame.style.display = 'none';

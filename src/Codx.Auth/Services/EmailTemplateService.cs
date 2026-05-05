@@ -4,6 +4,7 @@ using Codx.Auth.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,7 +18,9 @@ namespace Codx.Auth.Services
         private static readonly Dictionary<EmailTemplateType, string> RequiredPlaceholders = new()
         {
             [EmailTemplateType.EmailVerification] = "{{VerificationLink}}",
-            [EmailTemplateType.TwoFactor]         = "{{TwoFactorCode}}"
+            [EmailTemplateType.TwoFactor]         = "{{TwoFactorCode}}",
+            [EmailTemplateType.PasswordReset]     = "{{PasswordResetLink}}",
+            [EmailTemplateType.Invitation]        = "{{InvitationLink}}"
         };
 
         private readonly UserDbContext _context;
@@ -59,9 +62,7 @@ namespace Codx.Auth.Services
                 return ApplyPlaceholders(globalTemplate.Body, context);
 
             // 3. Built-in hardcoded default
-            return type == EmailTemplateType.EmailVerification
-                ? _builtIn.GetEmailVerificationBody(context.UserName, context.VerificationLink ?? string.Empty)
-                : _builtIn.GetTwoFactorBody(context.UserName, context.TwoFactorCode ?? string.Empty);
+            return _builtIn.GetBody(type, context);
         }
 
         // ── Global CRUD ───────────────────────────────────────────────────────
@@ -180,7 +181,7 @@ namespace Codx.Auth.Services
 
         // ── Preview ───────────────────────────────────────────────────────────
 
-        public string RenderPreview(EmailTemplateType type, string body)
+        public PreviewResult RenderPreview(EmailTemplateType type, string body)
         {
             AssertValid(type, body);
 
@@ -190,10 +191,20 @@ namespace Codx.Auth.Services
                 TenantName:       "Acme Corporation",
                 CompanyName:      "Acme Corp \u2014 HQ",
                 VerificationLink: "https://auth.example.com/verify?token=sample-token-abc123",
-                TwoFactorCode:    "482910"
+                TwoFactorCode:    "482910",
+                PasswordResetLink: "https://auth.example.com/reset-password?token=sample-reset",
+                InvitationLink:   "https://auth.example.com/invite/sample-invite-token",
+                InviterName:      "Jane Smith"
             );
 
-            return ApplyPlaceholders(body, sampleContext);
+            var rendered = ApplyPlaceholders(body, sampleContext);
+
+            var warnings = Regex.Matches(rendered, @"\{\{\w+\}\}")
+                .Select(m => m.Value)
+                .Distinct()
+                .ToList();
+
+            return new PreviewResult(rendered, warnings);
         }
 
         // ── Validation ────────────────────────────────────────────────────────
@@ -222,12 +233,15 @@ namespace Codx.Auth.Services
         private static string ApplyPlaceholders(string template, EmailTemplateRenderContext ctx)
         {
             return template
-                .Replace("{{VerificationLink}}", ctx.VerificationLink ?? string.Empty)
-                .Replace("{{TwoFactorCode}}",    ctx.TwoFactorCode    ?? string.Empty)
-                .Replace("{{UserName}}",         ctx.UserName         ?? string.Empty)
-                .Replace("{{UserEmail}}",        ctx.UserEmail        ?? string.Empty)
-                .Replace("{{TenantName}}",       ctx.TenantName       ?? string.Empty)
-                .Replace("{{CompanyName}}",      ctx.CompanyName      ?? string.Empty);
+                .Replace("{{VerificationLink}}",  ctx.VerificationLink  ?? string.Empty)
+                .Replace("{{TwoFactorCode}}",      ctx.TwoFactorCode     ?? string.Empty)
+                .Replace("{{PasswordResetLink}}",  ctx.PasswordResetLink ?? string.Empty)
+                .Replace("{{InvitationLink}}",     ctx.InvitationLink    ?? string.Empty)
+                .Replace("{{InviterName}}",        ctx.InviterName       ?? string.Empty)
+                .Replace("{{UserName}}",           ctx.UserName          ?? string.Empty)
+                .Replace("{{UserEmail}}",          ctx.UserEmail         ?? string.Empty)
+                .Replace("{{TenantName}}",         ctx.TenantName        ?? string.Empty)
+                .Replace("{{CompanyName}}",        ctx.CompanyName       ?? string.Empty);
         }
 
         private void AssertValid(EmailTemplateType type, string body)

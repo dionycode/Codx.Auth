@@ -1,7 +1,22 @@
+using Codx.Auth.Models;
+using System;
+
 namespace Codx.Auth.Services
 {
     public class BuiltInEmailTemplateProvider
     {
+        public string GetBody(EmailTemplateType type, EmailTemplateRenderContext ctx)
+        {
+            return type switch
+            {
+                EmailTemplateType.EmailVerification => GetEmailVerificationBody(ctx.UserName, ctx.VerificationLink ?? string.Empty),
+                EmailTemplateType.TwoFactor         => GetTwoFactorBody(ctx.UserName, ctx.TwoFactorCode ?? string.Empty),
+                EmailTemplateType.PasswordReset     => GetPasswordResetBody(ctx.UserName, ctx.PasswordResetLink ?? string.Empty),
+                EmailTemplateType.Invitation        => GetInvitationBody(ctx.UserName, ctx.InviterName ?? string.Empty, ctx.InvitationLink ?? string.Empty),
+                _                                   => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+            };
+        }
+
         public string GetEmailVerificationBody(string displayName, string callbackUrl)
         {
             return $@"
@@ -178,6 +193,191 @@ namespace Codx.Auth.Services
         <p>Enter this code on the verification page to complete your login.</p>
         
         <p>Best regards,<br>Codx Auth System</p>
+    </div>
+    <div class=""footer"">
+        <p>This is an automated message. Please do not reply to this email.</p>
+        <p>If you have any questions, please contact our support team.</p>
+    </div>
+</body>
+</html>";
+        }
+
+        public string GetPasswordResetBody(string displayName, string callbackUrl)
+        {
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=""utf-8"">
+    <title>Password Reset</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        .header {{
+            background-color: #dc3545;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }}
+        .content {{
+            background-color: #f8f9fa;
+            padding: 30px;
+            border-radius: 0 0 5px 5px;
+        }}
+        .button {{
+            display: inline-block;
+            padding: 15px 30px;
+            background-color: #dc3545;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }}
+        .warning {{
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }}
+        .footer {{
+            text-align: center;
+            margin-top: 30px;
+            font-size: 12px;
+            color: #6c757d;
+        }}
+        .link {{
+            word-break: break-all;
+            color: #dc3545;
+            font-size: 12px;
+        }}
+    </style>
+</head>
+<body>
+    <div class=""header"">
+        <h1>Password Reset Request</h1>
+    </div>
+    <div class=""content"">
+        <h2>Hello {displayName},</h2>
+        <p>We received a request to reset the password for your account. Click the button below to set a new password:</p>
+
+        <div style=""text-align: center;"">
+            <a href=""{callbackUrl}"" class=""button"">Reset Password</a>
+        </div>
+
+        <div class=""warning"">
+            <strong>Important:</strong>
+            <ul>
+                <li>This link will expire in 1 hour</li>
+                <li>If you did not request a password reset, please ignore this email and your password will remain unchanged</li>
+                <li>Do not share this link with anyone</li>
+            </ul>
+        </div>
+
+        <p>If the button above doesn't work, copy and paste the following link into your browser:</p>
+        <p class=""link"">{callbackUrl}</p>
+
+        <p>Best regards,<br>Codx Auth Team</p>
+    </div>
+    <div class=""footer"">
+        <p>This is an automated message. Please do not reply to this email.</p>
+        <p>If you have any questions, please contact our support team.</p>
+    </div>
+</body>
+</html>";
+        }
+
+        public string GetInvitationBody(string inviteeEmail, string inviterName, string callbackUrl)
+        {
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=""utf-8"">
+    <title>You have been invited</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        .header {{
+            background-color: #198754;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }}
+        .content {{
+            background-color: #f8f9fa;
+            padding: 30px;
+            border-radius: 0 0 5px 5px;
+        }}
+        .button {{
+            display: inline-block;
+            padding: 15px 30px;
+            background-color: #198754;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }}
+        .warning {{
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }}
+        .footer {{
+            text-align: center;
+            margin-top: 30px;
+            font-size: 12px;
+            color: #6c757d;
+        }}
+        .link {{
+            word-break: break-all;
+            color: #198754;
+            font-size: 12px;
+        }}
+    </style>
+</head>
+<body>
+    <div class=""header"">
+        <h1>You've been invited!</h1>
+    </div>
+    <div class=""content"">
+        <h2>Hello {inviteeEmail},</h2>
+        <p>{(string.IsNullOrWhiteSpace(inviterName) ? "You have been invited" : $"{inviterName} has invited you")} to join the platform. Click the button below to accept the invitation and create your account:</p>
+
+        <div style=""text-align: center;"">
+            <a href=""{callbackUrl}"" class=""button"">Accept Invitation</a>
+        </div>
+
+        <div class=""warning"">
+            <strong>Important:</strong>
+            <ul>
+                <li>This invitation will expire in 7 days</li>
+                <li>If you were not expecting this invitation, please ignore this email</li>
+            </ul>
+        </div>
+
+        <p>If the button above doesn't work, copy and paste the following link into your browser:</p>
+        <p class=""link"">{callbackUrl}</p>
+
+        <p>Best regards,<br>Codx Auth Team</p>
     </div>
     <div class=""footer"">
         <p>This is an automated message. Please do not reply to this email.</p>

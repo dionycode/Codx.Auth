@@ -24,7 +24,9 @@ namespace Codx.Auth.Controllers
         private static readonly Dictionary<string, string> TypeLabels = new()
         {
             ["EmailVerification"] = "Verification Email",
-            ["TwoFactor"]         = "Two-Factor Email"
+            ["TwoFactor"]         = "Two-Factor Email",
+            ["PasswordReset"]     = "Password Reset Email",
+            ["Invitation"]        = "Invitation Email"
         };
 
         public EmailTemplatesController(IEmailTemplateService templateService, UserDbContext db)
@@ -43,7 +45,13 @@ namespace Codx.Auth.Controllers
 
             var rows = new List<EmailTemplateRowViewModel>();
 
-            foreach (var type in new[] { EmailTemplateType.EmailVerification, EmailTemplateType.TwoFactor })
+            foreach (var type in new[]
+            {
+                EmailTemplateType.EmailVerification,
+                EmailTemplateType.TwoFactor,
+                EmailTemplateType.PasswordReset,
+                EmailTemplateType.Invitation
+            })
             {
                 var typeString = type.ToString();
                 string? body;
@@ -140,12 +148,13 @@ namespace Codx.Auth.Controllers
 
             return View(new EmailTemplateEditViewModel
             {
-                TenantId          = tenantId,
-                TenantName        = tenantName ?? string.Empty,
-                TemplateType      = type,
-                TemplateTypeLabel = TypeLabels.GetValueOrDefault(type, type),
-                Body              = body,
-                SourceLabel       = sourceLabel
+                TenantId            = tenantId,
+                TenantName          = tenantName ?? string.Empty,
+                TemplateType        = type,
+                TemplateTypeLabel   = TypeLabels.GetValueOrDefault(type, type),
+                Body                = body,
+                SourceLabel         = sourceLabel,
+                PlaceholderReference = BuildPlaceholderReference(templateType)
             });
         }
 
@@ -166,7 +175,8 @@ namespace Codx.Auth.Controllers
 
             if (!ModelState.IsValid)
             {
-                model.TemplateTypeLabel = TypeLabels.GetValueOrDefault(model.TemplateType, model.TemplateType);
+                model.TemplateTypeLabel      = TypeLabels.GetValueOrDefault(model.TemplateType, model.TemplateType);
+                model.PlaceholderReference   = TryParseType(model.TemplateType, out var t) ? BuildPlaceholderReference(t) : Array.Empty<PlaceholderReferenceItem>();
                 return View(model);
             }
 
@@ -240,7 +250,7 @@ namespace Codx.Auth.Controllers
             return RedirectToAction(nameof(Index), new { tenantId = model.TenantId });
         }
 
-        // POST /EmailTemplates/Preview  — AJAX, returns rendered HTML fragment
+        // POST /EmailTemplates/Preview  — AJAX, returns JSON { rendered, warnings }
         [HttpPost("Preview")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Preview([FromForm] string type, [FromForm] string body, [FromForm] Guid? tenantId)
@@ -255,8 +265,8 @@ namespace Codx.Auth.Controllers
             if (errors.Count > 0)
                 return BadRequest(string.Join(" ", errors));
 
-            var rendered = _templateService.RenderPreview(templateType, body);
-            return Content(rendered, "text/html");
+            var result = _templateService.RenderPreview(templateType, body);
+            return Json(new { rendered = result.Rendered, warnings = result.UnrecognizedPlaceholders });
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────
@@ -268,6 +278,8 @@ namespace Codx.Auth.Controllers
             {
                 "EmailVerification" => (result = EmailTemplateType.EmailVerification) == EmailTemplateType.EmailVerification,
                 "TwoFactor"         => (result = EmailTemplateType.TwoFactor) == EmailTemplateType.TwoFactor,
+                "PasswordReset"     => (result = EmailTemplateType.PasswordReset) == EmailTemplateType.PasswordReset,
+                "Invitation"        => (result = EmailTemplateType.Invitation) == EmailTemplateType.Invitation,
                 _                   => false
             };
         }
@@ -299,6 +311,41 @@ namespace Codx.Auth.Controllers
         {
             var sub = User.FindFirst("sub")?.Value;
             return Guid.TryParse(sub, out var id) ? id : null;
+        }
+
+        private static IReadOnlyList<PlaceholderReferenceItem> BuildPlaceholderReference(EmailTemplateType type)
+        {
+            var common = new[]
+            {
+                new PlaceholderReferenceItem { Token = "{{UserName}}",    Description = "Recipient display name",    IsRequired = false },
+                new PlaceholderReferenceItem { Token = "{{UserEmail}}",   Description = "Recipient email address",   IsRequired = false },
+                new PlaceholderReferenceItem { Token = "{{TenantName}}", Description = "Tenant name",               IsRequired = false },
+                new PlaceholderReferenceItem { Token = "{{CompanyName}}",Description = "Active company name",       IsRequired = false }
+            };
+
+            var typeSpecific = type switch
+            {
+                EmailTemplateType.EmailVerification => new[]
+                {
+                    new PlaceholderReferenceItem { Token = "{{VerificationLink}}",  Description = "Email verification URL",   IsRequired = true }
+                },
+                EmailTemplateType.TwoFactor => new[]
+                {
+                    new PlaceholderReferenceItem { Token = "{{TwoFactorCode}}",     Description = "One-time authentication code", IsRequired = true }
+                },
+                EmailTemplateType.PasswordReset => new[]
+                {
+                    new PlaceholderReferenceItem { Token = "{{PasswordResetLink}}", Description = "Password reset URL",       IsRequired = true }
+                },
+                EmailTemplateType.Invitation => new[]
+                {
+                    new PlaceholderReferenceItem { Token = "{{InvitationLink}}",    Description = "Invitation acceptance URL", IsRequired = true },
+                    new PlaceholderReferenceItem { Token = "{{InviterName}}",       Description = "Name of the inviting user", IsRequired = false }
+                },
+                _ => Array.Empty<PlaceholderReferenceItem>()
+            };
+
+            return typeSpecific.Concat(common).ToList();
         }
     }
 }

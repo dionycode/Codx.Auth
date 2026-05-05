@@ -176,10 +176,9 @@ namespace Codx.Auth.Controllers.API
             if (errors.Count > 0)
                 return ValidationProblem(BuildValidationProblem(errors));
 
-            var rendered = _templateService.RenderPreview(templateType, request.Body);
-            var warnings = DetectUnrecognizedPlaceholders(request.Body);
+            var result = _templateService.RenderPreview(templateType, request.Body);
 
-            return Ok(new { rendered, warnings });
+            return Ok(new { rendered = result.Rendered, warnings = result.UnrecognizedPlaceholders });
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────
@@ -191,6 +190,8 @@ namespace Codx.Auth.Controllers.API
             {
                 "email-verification" => (result = EmailTemplateType.EmailVerification) == EmailTemplateType.EmailVerification,
                 "two-factor"         => (result = EmailTemplateType.TwoFactor) == EmailTemplateType.TwoFactor,
+                "password-reset"     => (result = EmailTemplateType.PasswordReset) == EmailTemplateType.PasswordReset,
+                "invitation"         => (result = EmailTemplateType.Invitation) == EmailTemplateType.Invitation,
                 _                    => false
             };
         }
@@ -224,6 +225,7 @@ namespace Codx.Auth.Controllers.API
             var known = new System.Collections.Generic.HashSet<string>
             {
                 "{{VerificationLink}}", "{{TwoFactorCode}}",
+                "{{PasswordResetLink}}", "{{InvitationLink}}", "{{InviterName}}",
                 "{{UserName}}", "{{UserEmail}}", "{{TenantName}}", "{{CompanyName}}"
             };
 
@@ -232,7 +234,7 @@ namespace Codx.Auth.Controllers.API
             foreach (System.Text.RegularExpressions.Match match in matches)
             {
                 if (!known.Contains(match.Value))
-                    warnings.Add($"Unrecognized placeholder '{match.Value}' was left verbatim.");
+                    warnings.Add(match.Value);
             }
 
             return warnings;

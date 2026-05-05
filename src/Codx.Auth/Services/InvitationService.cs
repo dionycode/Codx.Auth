@@ -1,7 +1,10 @@
 using Codx.Auth.Data.Contexts;
+using Codx.Auth.Data.Entities.AspNet;
 using Codx.Auth.Data.Entities.Enterprise;
+using Codx.Auth.Models;
 using Codx.Auth.Models.Email;
 using Codx.Auth.Services.Interfaces;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -10,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Codx.Auth.Services
@@ -18,6 +22,8 @@ namespace Codx.Auth.Services
     {
         private readonly UserDbContext _context;
         private readonly IEmailService _emailService;
+        private readonly IEmailTemplateService _templateService;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly IAuditService _auditService;
         private readonly ILogger<InvitationService> _logger;
         private readonly string _baseUrl;
@@ -26,12 +32,16 @@ namespace Codx.Auth.Services
         public InvitationService(
             UserDbContext context,
             IEmailService emailService,
+            IEmailTemplateService templateService,
+            UserManager<ApplicationUser> userManager,
             IAuditService auditService,
             ILogger<InvitationService> logger,
             IConfiguration configuration)
         {
             _context = context;
             _emailService = emailService;
+            _templateService = templateService;
+            _userManager = userManager;
             _auditService = auditService;
             _logger = logger;
             _baseUrl = configuration["BaseUrl"] ?? "https://localhost";
@@ -98,12 +108,31 @@ namespace Codx.Auth.Services
             try
             {
                 var inviteUrl = $"{_baseUrl.TrimEnd('/')}/invite/{rawToken}";
+
+                var inviter = await _userManager.FindByIdAsync(invitedByUserId.ToString());
+                var inviterName = inviter is not null
+                    ? $"{inviter.GivenName} {inviter.FamilyName}".Trim()
+                    : string.Empty;
+
+                var renderContext = new EmailTemplateRenderContext(
+                    UserName:      email,
+                    UserEmail:     email,
+                    TenantName:    string.Empty,
+                    CompanyName:   string.Empty,
+                    InvitationLink: inviteUrl,
+                    InviterName:   inviterName
+                );
+
+                var ct = CancellationToken.None;
+                var body = await _templateService.GetResolvedBodyAsync(
+                    EmailTemplateType.Invitation, tenantId, renderContext, ct);
+
                 await _emailService.SendEmailAsync(new EmailMessage
                 {
-                    To = email,
+                    To      = email,
                     Subject = "You have been invited",
-                    Body = BuildInviteEmailBody(inviteUrl),
-                    IsHtml = true
+                    Body    = body,
+                    IsHtml  = true
                 });
             }
             catch (Exception ex)
@@ -232,16 +261,5 @@ namespace Codx.Auth.Services
             var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(input));
             return Convert.ToHexString(bytes).ToLowerInvariant();
         }
-
-        private string BuildInviteEmailBody(string inviteUrl) =>
-            $@"<!DOCTYPE html>
-<html>
-<body>
-<p>You have been invited to join the platform.</p>
-<p><a href=""{inviteUrl}"">Click here to accept your invitation</a></p>
-<p>This invitation expires in {_expiryDays} days.</p>
-<p>If you did not expect this invitation, you can safely ignore this email.</p>
-</body>
-</html>";
     }
 }
