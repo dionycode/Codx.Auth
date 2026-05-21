@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace Codx.Auth.Authorization
 {
-    public class WorkspaceUserAddRequirement : IAuthorizationRequirement { }
+    public class WorkspaceUserManagementRequirement : IAuthorizationRequirement { }
 
-    public class WorkspaceUserAddHandler
-        : AuthorizationHandler<WorkspaceUserAddRequirement>
+    public class WorkspaceUserManagementHandler
+        : AuthorizationHandler<WorkspaceUserManagementRequirement>
     {
         private static readonly HashSet<string> PermittedRoles = new(System.StringComparer.OrdinalIgnoreCase)
         {
@@ -18,7 +18,7 @@ namespace Codx.Auth.Authorization
 
         protected override Task HandleRequirementAsync(
             AuthorizationHandlerContext context,
-            WorkspaceUserAddRequirement requirement)
+            WorkspaceUserManagementRequirement requirement)
         {
             var tenantId  = context.User.FindFirstValue("tenant_id");
             var companyId = context.User.FindFirstValue("company_id");

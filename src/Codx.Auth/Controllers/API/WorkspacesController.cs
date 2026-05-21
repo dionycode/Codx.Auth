@@ -66,7 +66,7 @@ namespace Codx.Auth.Controllers.API
         /// Responds 201 (user added) or 202 (invitation sent).
         /// </summary>
         [HttpPost("users")]
-        [Authorize(Policy = "WorkspaceUserAddPolicy")]
+        [Authorize(Policy = "WorkspaceUserManagementPolicy")]
         [ProducesResponseType(typeof(AddWorkspaceUserResponse), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(AddWorkspaceUserResponse), StatusCodes.Status202Accepted)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -105,6 +105,84 @@ namespace Codx.Auth.Controllers.API
                 AddWorkspaceUserResult.ResultOutcome.Forbidden => StatusCode(StatusCodes.Status403Forbidden, new { error = result.Detail }),
                 AddWorkspaceUserResult.ResultOutcome.BadRequest => BadRequest(new { error = result.Detail }),
                 _ => StatusCode(StatusCodes.Status500InternalServerError)
+            };
+        }
+
+        /// <summary>
+        /// Replaces a workspace member's application role. The old UserApplicationRole is set to
+        /// Revoked and a new one is created (Spec 004 lifecycle). Caller's workspace_role must
+        /// permit assigning the requested role (role-hierarchy constraint, plan.md AD-6).
+        /// </summary>
+        [HttpPut("members/{userId:guid}/role")]
+        [Authorize(Policy = "WorkspaceUserManagementPolicy")]
+        [ProducesResponseType(typeof(UpdateMemberRoleResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> UpdateMemberRole(
+            Guid userId,
+            [FromBody] UpdateMemberRoleRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(request?.ApplicationRole))
+                return BadRequest(new { error = "applicationRole is required." });
+
+            var callerContext = BuildCallerContext();
+            var result = await _service.UpdateMemberRoleAsync(userId, request, callerContext, cancellationToken);
+
+            return result.Status switch
+            {
+                ServiceResult<UpdateMemberRoleResponse>.ResultStatus.Success   => Ok(result.Data),
+                ServiceResult<UpdateMemberRoleResponse>.ResultStatus.NotFound  => NotFound(),
+                ServiceResult<UpdateMemberRoleResponse>.ResultStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden, new { error = result.ErrorCode }),
+                ServiceResult<UpdateMemberRoleResponse>.ResultStatus.Conflict  => Conflict(new { error = result.ErrorCode }),
+                ServiceResult<UpdateMemberRoleResponse>.ResultStatus.BadRequest => BadRequest(new { error = result.ErrorCode }),
+                _ => StatusCode(StatusCodes.Status500InternalServerError)
+            };
+        }
+
+        /// <summary>
+        /// Removes a workspace member from the caller's company. Sets UserMembership → Removed,
+        /// all active UserApplicationRoles → Revoked, and revokes persisted grants (refresh tokens).
+        /// Returns 200 OK with body — intentional deviation from 204 per plan.md AD-15.
+        /// </summary>
+        [HttpDelete("members/{userId:guid}")]
+        [Authorize(Policy = "WorkspaceUserManagementPolicy")]
+        [ProducesResponseType(typeof(RemoveMemberResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> RemoveMember(
+            Guid userId,
+            CancellationToken cancellationToken)
+        {
+            var callerContext = BuildCallerContext();
+            var result = await _service.RemoveMemberAsync(userId, callerContext, cancellationToken);
+
+            return result.Status switch
+            {
+                ServiceResult<RemoveMemberResponse>.ResultStatus.Success   => Ok(result.Data),
+                ServiceResult<RemoveMemberResponse>.ResultStatus.NotFound  => NotFound(),
+                ServiceResult<RemoveMemberResponse>.ResultStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden, new { error = result.ErrorCode }),
+                ServiceResult<RemoveMemberResponse>.ResultStatus.Conflict  => Conflict(new { error = result.ErrorCode }),
+                _ => StatusCode(StatusCodes.Status500InternalServerError)
+            };
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Private helpers
+        // ────────────────────────────────────────────────────────────────
+
+        private WorkspaceAddCallerContext BuildCallerContext()
+        {
+            return new WorkspaceAddCallerContext
+            {
+                TenantId             = Guid.Parse(User.FindFirstValue("tenant_id")!),
+                CompanyId            = Guid.Parse(User.FindFirstValue("company_id")!),
+                ClientId             = User.FindFirstValue("client_id")!,
+                CallerWorkspaceRoles = User.FindAll("workspace_role").Select(c => c.Value).ToList(),
+                CallerId             = Guid.Parse(User.FindFirstValue("sub")!),
             };
         }
     }

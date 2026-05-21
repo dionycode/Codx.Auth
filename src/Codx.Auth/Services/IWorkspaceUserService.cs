@@ -8,6 +8,28 @@ namespace Codx.Auth.Services
     public interface IWorkspaceUserService
     {
         /// <summary>
+        /// Updates the application role of an active workspace member.
+        /// Enforces the self-modification guard, role-value validation (ApplicationId-scoped),
+        /// and the role-hierarchy constraint before applying the Spec 004 lifecycle transition.
+        /// </summary>
+        Task<ServiceResult<UpdateMemberRoleResponse>> UpdateMemberRoleAsync(
+            Guid userId,
+            UpdateMemberRoleRequest request,
+            WorkspaceAddCallerContext callerContext,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Removes an active workspace member. Transitions UserMembership → Removed,
+        /// all active UserApplicationRoles → Revoked, and revokes persisted grants
+        /// (refresh tokens) for the removed user scoped to the calling client.
+        /// </summary>
+        Task<ServiceResult<RemoveMemberResponse>> RemoveMemberAsync(
+            Guid userId,
+            WorkspaceAddCallerContext callerContext,
+            CancellationToken cancellationToken = default);
+
+
+        /// <summary>
         /// Returns a paginated list of workspace users for the given tenant, company, and
         /// client. The application_id is resolved internally from <c>ClientProperties</c>
         /// using the caller's <paramref name="clientId"/> claim.

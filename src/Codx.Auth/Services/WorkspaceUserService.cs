@@ -3,8 +3,10 @@ using Codx.Auth.Data.Entities.Enterprise;
 using Codx.Auth.Infrastructure.Lifecycle;
 using Codx.Auth.Models.WorkspaceUsers;
 using Codx.Auth.Services.Interfaces;
+using Duende.IdentityServer.Stores;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,15 +21,21 @@ namespace Codx.Auth.Services
         private readonly UserDbContext _userDb;
         private readonly IdentityServerDbContext _isDb;
         private readonly IInvitationService _invitationService;
+        private readonly IPersistedGrantStore _persistedGrantStore;
+        private readonly ILogger<WorkspaceUserService> _logger;
 
         public WorkspaceUserService(
             UserDbContext userDb,
             IdentityServerDbContext isDb,
-            IInvitationService invitationService)
+            IInvitationService invitationService,
+            IPersistedGrantStore persistedGrantStore,
+            ILogger<WorkspaceUserService> logger)
         {
             _userDb = userDb;
             _isDb   = isDb;
             _invitationService = invitationService;
+            _persistedGrantStore = persistedGrantStore;
+            _logger = logger;
         }
 
         public async Task<WorkspaceUsersResponse?> GetWorkspaceUsersAsync(
@@ -351,46 +359,317 @@ namespace Codx.Auth.Services
 
             var now = DateTime.UtcNow;
 
-            var membership = new UserMembership
+            // ── UserMembership: reactivate if previously removed, otherwise insert ──
+            var existingMembership = await _userDb.UserMemberships
+                .FirstOrDefaultAsync(
+                    m => m.UserId    == userId
+                      && m.TenantId  == tenantId
+                      && m.CompanyId == companyId,
+                    cancellationToken);
+
+            UserMembership membership;
+
+            if (existingMembership is not null)
             {
-                Id         = Guid.NewGuid(),
-                UserId     = userId,
-                TenantId   = tenantId,
-                CompanyId  = companyId,
-                Status     = LifecycleStatus.Membership.Active,
-                JoinedAt   = now,
-                MembershipRoles = new List<UserMembershipRole>
+                // Reactivate the soft-deleted membership in-place
+                existingMembership.Status            = LifecycleStatus.Membership.Active;
+                existingMembership.StatusChangedAt   = now;
+                existingMembership.StatusChangedBy   = assignedByUserId;
+
+                // Revoke all existing membership roles, then re-add
+                var existingMembershipRoles = await _userDb.UserMembershipRoles
+                    .Where(r => r.MembershipId == existingMembership.Id)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var r in existingMembershipRoles)
                 {
-                    new()
-                    {
-                        Id              = Guid.NewGuid(),
-                        RoleId          = roleDefId,
-                        Status          = LifecycleStatus.MembershipRole.Active,
-                        AssignedAt      = now,
-                        AssignedByUserId = assignedByUserId,
-                    }
+                    r.Status            = LifecycleStatus.MembershipRole.Removed;
+                    r.StatusChangedAt   = now;
+                    r.StatusChangedBy   = assignedByUserId;
                 }
-            };
 
-            await _userDb.UserMemberships.AddAsync(membership, cancellationToken);
+                _userDb.UserMembershipRoles.Add(new UserMembershipRole
+                {
+                    Id               = Guid.NewGuid(),
+                    MembershipId     = existingMembership.Id,
+                    RoleId           = roleDefId,
+                    Status           = LifecycleStatus.MembershipRole.Active,
+                    AssignedAt       = now,
+                    AssignedByUserId = assignedByUserId,
+                });
 
+                membership = existingMembership;
+            }
+            else
+            {
+                membership = new UserMembership
+                {
+                    Id        = Guid.NewGuid(),
+                    UserId    = userId,
+                    TenantId  = tenantId,
+                    CompanyId = companyId,
+                    Status    = LifecycleStatus.Membership.Active,
+                    JoinedAt  = now,
+                    MembershipRoles = new List<UserMembershipRole>
+                    {
+                        new()
+                        {
+                            Id               = Guid.NewGuid(),
+                            RoleId           = roleDefId,
+                            Status           = LifecycleStatus.MembershipRole.Active,
+                            AssignedAt       = now,
+                            AssignedByUserId = assignedByUserId,
+                        }
+                    }
+                };
+
+                await _userDb.UserMemberships.AddAsync(membership, cancellationToken);
+            }
+
+            // ── UserApplicationRoles: reactivate if revoked, otherwise insert ──
             foreach (var roleEntity in roleEntities)
             {
-                await _userDb.UserApplicationRoles.AddAsync(new UserApplicationRole
+                var existingUar = await _userDb.UserApplicationRoles
+                    .FirstOrDefaultAsync(
+                        r => r.UserId        == userId
+                          && r.TenantId      == tenantId
+                          && r.CompanyId     == companyId
+                          && r.ApplicationId == applicationId
+                          && r.RoleId        == roleEntity.Id,
+                        cancellationToken);
+
+                if (existingUar is not null)
                 {
-                    Id              = Guid.NewGuid(),
-                    UserId          = userId,
-                    TenantId        = tenantId,
-                    CompanyId       = companyId,
-                    ApplicationId   = applicationId,
-                    RoleId          = roleEntity.Id,
-                    Status          = LifecycleStatus.RoleAssignment.Active,
-                    AssignedAt      = now,
-                    AssignedByUserId = assignedByUserId,
-                }, cancellationToken);
+                    existingUar.Status           = LifecycleStatus.RoleAssignment.Active;
+                    existingUar.AssignedAt       = now;
+                    existingUar.AssignedByUserId = assignedByUserId;
+                    existingUar.RevokedAt        = null;
+                    existingUar.RevokedByUserId  = null;
+                }
+                else
+                {
+                    await _userDb.UserApplicationRoles.AddAsync(new UserApplicationRole
+                    {
+                        Id               = Guid.NewGuid(),
+                        UserId           = userId,
+                        TenantId         = tenantId,
+                        CompanyId        = companyId,
+                        ApplicationId    = applicationId,
+                        RoleId           = roleEntity.Id,
+                        Status           = LifecycleStatus.RoleAssignment.Active,
+                        AssignedAt       = now,
+                        AssignedByUserId = assignedByUserId,
+                    }, cancellationToken);
+                }
             }
 
             await _userDb.SaveChangesAsync(cancellationToken);
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Update Member Role (spec 003-04)
+        // ────────────────────────────────────────────────────────────────
+
+        public async Task<ServiceResult<UpdateMemberRoleResponse>> UpdateMemberRoleAsync(
+            Guid userId,
+            UpdateMemberRoleRequest request,
+            WorkspaceAddCallerContext callerContext,
+            CancellationToken cancellationToken = default)
+        {
+            // 1. Self-modification guard
+            if (userId == callerContext.CallerId)
+                return ServiceResult<UpdateMemberRoleResponse>.Forbidden("CANNOT_MODIFY_SELF");
+
+            // 2. Resolve application_id from ClientProperties
+            var applicationId = await _isDb.Clients
+                .Where(c => c.ClientId == callerContext.ClientId)
+                .SelectMany(c => c.Properties)
+                .Where(p => p.Key == "application_id")
+                .Select(p => p.Value)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (applicationId == null)
+                return ServiceResult<UpdateMemberRoleResponse>.Forbidden("CLIENT_NOT_MAPPED");
+
+            // 3. Validate role value (dynamic — ApplicationId-scoped via EnterpriseApplicationRoles)
+            var roleEntity = await _userDb.EnterpriseApplicationRoles
+                .Where(r => r.ApplicationId == applicationId
+                         && r.Name          == request.ApplicationRole
+                         && r.Status        == LifecycleStatus.AppRole.Active)
+                .Select(r => new { r.Id, r.Name })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (roleEntity == null)
+                return ServiceResult<UpdateMemberRoleResponse>.BadRequest("ROLE_INVALID");
+
+            // 4. Role constraint check — caller's workspace_role limits assignable roles
+            var forbidden = false;
+
+            if (callerContext.CallerWorkspaceRoles.Contains("COMPANY_ADMIN", StringComparer.OrdinalIgnoreCase)
+                && !callerContext.CallerWorkspaceRoles.Any(r =>
+                        r.Equals("TENANT_OWNER", StringComparison.OrdinalIgnoreCase) ||
+                        r.Equals("TENANT_ADMIN",  StringComparison.OrdinalIgnoreCase)))
+            {
+                // COMPANY_ADMIN may only assign User
+                forbidden = !roleEntity.Name.Equals("User", StringComparison.OrdinalIgnoreCase);
+            }
+            else if (callerContext.CallerWorkspaceRoles.Contains("TENANT_ADMIN",
+                        StringComparer.OrdinalIgnoreCase)
+                && !callerContext.CallerWorkspaceRoles.Any(r =>
+                        r.Equals("TENANT_OWNER", StringComparison.OrdinalIgnoreCase)))
+            {
+                // TENANT_ADMIN may not assign Admin
+                forbidden = roleEntity.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (forbidden)
+                return ServiceResult<UpdateMemberRoleResponse>.Forbidden("ROLE_NOT_PERMITTED");
+
+            // 5. Active membership check
+            var membership = await FindMembershipAsync(userId, callerContext.TenantId, callerContext.CompanyId, cancellationToken);
+            if (membership == null)
+                return ServiceResult<UpdateMemberRoleResponse>.NotFound();
+            if (membership.Status != LifecycleStatus.Membership.Active)
+                return ServiceResult<UpdateMemberRoleResponse>.Conflict("MEMBERSHIP_NOT_ACTIVE");
+
+            // 6. Idempotency check — return success immediately if role already matches
+            var alreadyActive = await _userDb.UserApplicationRoles
+                .AnyAsync(uar => uar.UserId        == userId
+                              && uar.CompanyId     == callerContext.CompanyId
+                              && uar.ApplicationId == applicationId
+                              && uar.RoleId        == roleEntity.Id
+                              && uar.Status        == LifecycleStatus.RoleAssignment.Active,
+                          cancellationToken);
+
+            if (alreadyActive)
+                return ServiceResult<UpdateMemberRoleResponse>.Success(
+                    new UpdateMemberRoleResponse { UserId = userId, ApplicationRole = request.ApplicationRole });
+
+            // 7. Atomic lifecycle transition — deactivate old, insert new
+            var now = DateTime.UtcNow;
+
+            var existingRoles = await _userDb.UserApplicationRoles
+                .Where(uar => uar.UserId        == userId
+                           && uar.CompanyId     == callerContext.CompanyId
+                           && uar.ApplicationId == applicationId
+                           && uar.Status        == LifecycleStatus.RoleAssignment.Active)
+                .ToListAsync(cancellationToken);
+
+            foreach (var uar in existingRoles)
+            {
+                uar.Status         = LifecycleStatus.RoleAssignment.Revoked;
+                uar.RevokedAt      = now;
+                uar.RevokedByUserId = callerContext.CallerId;
+            }
+
+            await _userDb.UserApplicationRoles.AddAsync(new UserApplicationRole
+            {
+                Id               = Guid.NewGuid(),
+                UserId           = userId,
+                TenantId         = callerContext.TenantId,
+                CompanyId        = callerContext.CompanyId,
+                ApplicationId    = applicationId,
+                RoleId           = roleEntity.Id,
+                Status           = LifecycleStatus.RoleAssignment.Active,
+                AssignedAt       = now,
+                AssignedByUserId = callerContext.CallerId,
+            }, cancellationToken);
+
+            await _userDb.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Member role updated: userId={UserId}, newRole={Role}, by={CallerId}, companyId={CompanyId}",
+                userId, request.ApplicationRole, callerContext.CallerId, callerContext.CompanyId);
+
+            return ServiceResult<UpdateMemberRoleResponse>.Success(
+                new UpdateMemberRoleResponse { UserId = userId, ApplicationRole = request.ApplicationRole });
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Remove Member (spec 003-04)
+        // ────────────────────────────────────────────────────────────────
+
+        public async Task<ServiceResult<RemoveMemberResponse>> RemoveMemberAsync(
+            Guid userId,
+            WorkspaceAddCallerContext callerContext,
+            CancellationToken cancellationToken = default)
+        {
+            // 1. Self-modification guard
+            if (userId == callerContext.CallerId)
+                return ServiceResult<RemoveMemberResponse>.Forbidden("CANNOT_MODIFY_SELF");
+
+            // 2. Active membership check
+            var membership = await FindMembershipAsync(userId, callerContext.TenantId, callerContext.CompanyId, cancellationToken);
+            if (membership == null)
+                return ServiceResult<RemoveMemberResponse>.NotFound();
+            if (membership.Status != LifecycleStatus.Membership.Active)
+                return ServiceResult<RemoveMemberResponse>.Conflict("MEMBERSHIP_ALREADY_REMOVED");
+
+            // 3. Atomic soft-removal
+            var now = DateTime.UtcNow;
+
+            membership.Status          = LifecycleStatus.Membership.Removed;
+            membership.StatusChangedAt = now;
+            membership.StatusChangedBy = callerContext.CallerId;
+
+            var activeRoles = await _userDb.UserApplicationRoles
+                .Where(uar => uar.UserId    == userId
+                           && uar.CompanyId == callerContext.CompanyId
+                           && uar.Status    == LifecycleStatus.RoleAssignment.Active)
+                .ToListAsync(cancellationToken);
+
+            foreach (var uar in activeRoles)
+            {
+                uar.Status          = LifecycleStatus.RoleAssignment.Revoked;
+                uar.RevokedAt       = now;
+                uar.RevokedByUserId = callerContext.CallerId;
+            }
+
+            await _userDb.SaveChangesAsync(cancellationToken);
+
+            // 4. Revoke persisted grants (refresh tokens) — non-fatal if it fails
+            try
+            {
+                await _persistedGrantStore.RemoveAllAsync(new Duende.IdentityServer.Stores.PersistedGrantFilter
+                {
+                    SubjectId = userId.ToString(),
+                    ClientId  = callerContext.ClientId,
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Failed to revoke persisted grants for userId={UserId}, clientId={ClientId}. " +
+                    "Membership has already been removed; token expiry is the safety net.",
+                    userId, callerContext.ClientId);
+            }
+
+            _logger.LogInformation(
+                "Member removed: userId={UserId}, by={CallerId}, companyId={CompanyId}",
+                userId, callerContext.CallerId, callerContext.CompanyId);
+
+            return ServiceResult<RemoveMemberResponse>.Success(
+                new RemoveMemberResponse { UserId = userId, Outcome = "removed" });
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Private helpers
+        // ────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Looks up a UserMembership for the given userId/tenantId/companyId with NO Status filter.
+        /// Returns null when no record exists (→ 404). Caller inspects Status to distinguish
+        /// Active (→ proceed) from non-Active (→ 409).
+        /// </summary>
+        private async Task<UserMembership?> FindMembershipAsync(
+            Guid userId, Guid tenantId, Guid companyId,
+            CancellationToken cancellationToken = default)
+        {
+            return await _userDb.UserMemberships
+                .Where(um => um.UserId    == userId
+                          && um.TenantId  == tenantId
+                          && um.CompanyId == companyId)
+                .FirstOrDefaultAsync(cancellationToken);
         }
     }
 }
