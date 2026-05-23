@@ -1,5 +1,6 @@
 ﻿using Codx.Auth.Data.Contexts;
 using Codx.Auth.Data.Entities.AspNet;
+using Codx.Auth.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -30,12 +31,12 @@ namespace Codx.Auth.Extensions
                 options.User.AllowedUserNameCharacters =
                 "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
                 options.User.RequireUniqueEmail = false;
+                options.Tokens.PasswordResetTokenProvider = PasswordResetTokenProviderOptions.ProviderName;
             })
                 .AddEntityFrameworkStores<UserDbContext>()
-                .AddDefaultTokenProviders();
-
-
-
+                .AddDefaultTokenProviders()
+                .AddTokenProvider<PasswordResetTokenProvider<ApplicationUser>>(
+                    PasswordResetTokenProviderOptions.ProviderName);
             return services;
         }
 

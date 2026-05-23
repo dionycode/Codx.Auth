@@ -23,6 +23,7 @@ namespace Codx.Auth.Services
         Task<(RegisterResponse result, ApplicationUser user)> RegisterAsync(RegisterRequest request);
         Task<(RegisterResponse result, ApplicationUser user)> RegisterExternalUserAsync(string email, string firstName, string middleName, string lastName, string provider, string providerUserId);
         Task<(bool success, string message)> SendEmailVerificationAsync(ApplicationUser user, string callbackUrl, Guid? tenantId = null, CancellationToken ct = default);
+        Task SendPasswordResetEmailAsync(ApplicationUser user, string resetLink, Guid? tenantId = null, CancellationToken ct = default);
     }
 
     public class AccountService : IAccountService
@@ -151,6 +152,32 @@ namespace Codx.Auth.Services
             {
                 return (false, $"Error sending verification email: {ex.Message}");
             }
+        }
+
+        public async Task SendPasswordResetEmailAsync(ApplicationUser user, string resetLink, Guid? tenantId = null, CancellationToken ct = default)
+        {
+            var displayName = user.GetDisplayName();
+
+            var renderContext = new Models.EmailTemplateRenderContext(
+                UserName:          displayName,
+                UserEmail:         user.Email ?? string.Empty,
+                TenantName:        string.Empty,
+                CompanyName:       string.Empty,
+                PasswordResetLink: resetLink
+            );
+
+            var body = await _templateService.GetResolvedBodyAsync(
+                Models.EmailTemplateType.PasswordReset, tenantId, renderContext, ct);
+
+            var emailMessage = new EmailMessage
+            {
+                To      = user.Email,
+                Subject = "Reset your password",
+                Body    = body,
+                IsHtml  = true
+            };
+
+            await _emailService.SendEmailAsync(emailMessage);
         }
 
         private async Task InitializeNewUserAsync(ApplicationUser user)
