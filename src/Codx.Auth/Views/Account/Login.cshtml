@@ -49,6 +49,9 @@
                             <div class="form-group">
                                 <input type="password" class="form-control" placeholder="Password" asp-for="Password" autocomplete="off">
                             </div>
+                            <div class="mb-2">
+                                <a asp-controller="Account" asp-action="ForgotPassword" class="register-link-small">Forgot Password?</a>
+                            </div>
                             @if (Model.AllowRememberLogin)
                             {
                                 <div class="form-group">

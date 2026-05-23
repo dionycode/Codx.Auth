@@ -30,6 +30,14 @@ namespace Codx.Auth.Services
             Guid? activeCompanyId = null,
             string applicationId = null,
             CancellationToken ct = default);
+
+        /// <summary>
+        /// Returns the TenantId of the user's oldest active membership.
+        /// Used for pre-auth tenant resolution (e.g. password reset email templating).
+        /// Returns null if the user has no active memberships, which causes callers to
+        /// fall back to the global email template.
+        /// </summary>
+        Task<Guid?> GetPrimaryTenantIdAsync(Guid userId);
     }
 
     public class MembershipQueryService : IMembershipQueryService
@@ -139,6 +147,17 @@ namespace Codx.Auth.Services
                     IsActive = isActive,
                 };
             }).ToList();
+        }
+
+        public async Task<Guid?> GetPrimaryTenantIdAsync(Guid userId)
+        {
+            var membership = await _db.UserMemberships
+                .AsNoTracking()
+                .Where(m => m.UserId == userId && m.Status == LifecycleStatus.Membership.Active)
+                .OrderBy(m => m.JoinedAt)
+                .FirstOrDefaultAsync();
+
+            return membership?.TenantId;
         }
     }
 }

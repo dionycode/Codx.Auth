@@ -5,6 +5,7 @@ using Codx.Auth.Configuration;
 using Codx.Auth.Data.Contexts;
 using Codx.Auth.Data.Entities.AspNet;
 using Codx.Auth.Extensions;
+using Codx.Auth.Infrastructure.Identity;
 using Codx.Auth.Mappings;
 using Codx.Auth.Services;
 using Codx.Auth.Services.Interfaces;
@@ -18,11 +19,13 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Net;
+using System.Threading.RateLimiting;
 
 namespace Codx.Auth
 {
@@ -112,6 +115,24 @@ namespace Codx.Auth
             services.AddSingleton<LifecycleTransitionGuard>();
             services.AddScoped<ILifecycleCascadeService, LifecycleCascadeService>();
             services.AddProblemDetails();
+
+            // Password reset token provider options (spec 006)
+            services.Configure<PasswordResetTokenProviderOptions>(options =>
+                options.TokenLifespan = TimeSpan.FromHours(
+                    Configuration.GetValue<int>("Authentication:PasswordResetTokenExpiryHours", 1)));
+
+            // Rate limiting (spec 006) — forgot-password fixed window: 5 req / 10 min / IP
+            services.AddRateLimiter(options =>
+            {
+                options.AddFixedWindowLimiter("forgot-password", opt =>
+                {
+                    opt.Window = TimeSpan.FromMinutes(10);
+                    opt.PermitLimit = 5;
+                    opt.QueueLimit = 0;
+                    opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                });
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            });
 
             // Workspace users (spec 003-02)
             services.AddScoped<IWorkspaceUserService, WorkspaceUserService>();
@@ -307,6 +328,8 @@ namespace Codx.Auth
             // CORS must be before UseAuthentication/UseAuthorization so that
             // preflight OPTIONS requests are handled before auth middleware runs.
             app.UseCors("AllowSpecificOrigins");
+
+            app.UseRateLimiter();
 
             app.UseIdentityServer();
             app.UseAuthentication();

@@ -23,9 +23,13 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Codx.Auth.Controllers
@@ -46,6 +50,8 @@ namespace Codx.Auth.Controllers
         private readonly IDataProtectionProvider _dataProtection;
         private readonly IAuditService _auditService;
         private readonly IWorkspaceInitializationService _workspaceInitService;
+        private readonly ILogger<AccountController> _logger;
+        private readonly IMembershipQueryService _membershipQueryService;
 
         public AccountController(
             UserManager<ApplicationUser> userManager,
@@ -60,7 +66,9 @@ namespace Codx.Auth.Controllers
             IInvitationService invitationService,
             IDataProtectionProvider dataProtection,
             IAuditService auditService,
-            IWorkspaceInitializationService workspaceInitService)
+            IWorkspaceInitializationService workspaceInitService,
+            ILogger<AccountController> logger,
+            IMembershipQueryService membershipQueryService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -75,6 +83,8 @@ namespace Codx.Auth.Controllers
             _dataProtection = dataProtection;
             _auditService = auditService;
             _workspaceInitService = workspaceInitService;
+            _logger = logger;
+            _membershipQueryService = membershipQueryService;
         }
 
         // ─── Invitation landing ──────────────────────────────────────────────
@@ -799,6 +809,118 @@ namespace Codx.Auth.Controllers
             return View();
         }
 
+        // ─── Forgot Password ──────────────────────────────────────────────────
+
+        [HttpGet]
+        public IActionResult ForgotPassword()
+        {
+            return View(new ForgotPasswordViewModel());
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [EnableRateLimiting("forgot-password")]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
+        {
+            if (!ModelState.IsValid)
+                return View(model);
+
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null || !await _userManager.IsEmailConfirmedAsync(user))
+            {
+                _logger.LogDebug("Password reset requested for unregistered or unconfirmed email");
+                return RedirectToAction(nameof(ForgotPasswordConfirmation));
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+            var resetLink = Url.Action("ResetPassword", "Account",
+                new { userId = user.Id, token = encodedToken }, protocol: Request.Scheme);
+
+            var tenantId = await _membershipQueryService.GetPrimaryTenantIdAsync(user.Id);
+            await _accountService.SendPasswordResetEmailAsync(user, resetLink, tenantId);
+
+            _logger.LogInformation("Password reset link generated for user {UserId}", user.Id);
+            return RedirectToAction(nameof(ForgotPasswordConfirmation));
+        }
+
+        [HttpGet]
+        public IActionResult ForgotPasswordConfirmation()
+        {
+            return View();
+        }
+
+        // ─── Reset Password ───────────────────────────────────────────────────
+
+        [HttpGet]
+        public IActionResult ResetPassword(string userId, string token)
+        {
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(token))
+                return RedirectToAction(nameof(ResetPasswordError));
+
+            return View(new ResetPasswordViewModel { UserId = userId, Token = token });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model)
+        {
+            if (!ModelState.IsValid)
+                return View(model);
+
+            var user = await _userManager.FindByIdAsync(model.UserId);
+            if (user == null)
+            {
+                _logger.LogWarning("Password reset attempted for unknown user {UserId}", model.UserId);
+                return RedirectToAction(nameof(ResetPasswordError));
+            }
+
+            byte[] tokenBytes;
+            try
+            {
+                tokenBytes = WebEncoders.Base64UrlDecode(model.Token);
+            }
+            catch
+            {
+                _logger.LogWarning("Password reset attempted with malformed token for user {UserId}", user.Id);
+                return RedirectToAction(nameof(ResetPasswordError));
+            }
+
+            var rawToken = Encoding.UTF8.GetString(tokenBytes);
+            var result = await _userManager.ResetPasswordAsync(user, rawToken, model.NewPassword);
+
+            if (result.Succeeded)
+            {
+                await _userManager.UpdateSecurityStampAsync(user);
+                _logger.LogInformation("Password reset succeeded for user {UserId}", user.Id);
+                return RedirectToAction(nameof(ResetPasswordConfirmation));
+            }
+
+            if (result.Errors.Any(e => e.Code is "InvalidToken" or "ExpiredToken"))
+            {
+                _logger.LogWarning("Password reset failed — invalid or expired token for user {UserId}", user.Id);
+                return RedirectToAction(nameof(ResetPasswordError));
+            }
+
+            var errorCodes = result.Errors.Select(e => e.Code).ToArray();
+            _logger.LogWarning("Password reset failed — policy violations for user {UserId}: {ErrorCodes}", user.Id, errorCodes);
+            foreach (var error in result.Errors)
+                ModelState.AddModelError(string.Empty, error.Description);
+
+            return View(model);
+        }
+
+        [HttpGet]
+        public IActionResult ResetPasswordConfirmation()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public IActionResult ResetPasswordError()
+        {
+            return View();
+        }
 
         /*****************************************/
         /* helper APIs for the AccountController */
