@@ -1,0 +1,238 @@
+@model Codx.Auth.ViewModels.EmailTemplates.EmailTemplateGuideViewModel
+
+@{
+    ViewData["Title"] = "Email Templates — Guide";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Home</a></li>
+        <li class="breadcrumb-item"><a asp-controller="EmailTemplates" asp-action="Index">Email Templates</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Guide</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-lg-10">
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Email Templates — Administrator Guide</h5>
+            </div>
+            <div class="card-body">
+                <p>
+                    Codx.Auth sends HTML emails for identity events (email verification, two-factor authentication,
+                    password reset, and user invitations). The body of each email can be customised at the
+                    <strong>platform level</strong> (applies to all tenants) or overridden per
+                    <strong>tenant</strong>.
+                </p>
+
+                <h6 class="mt-4">Template Resolution Order</h6>
+                <p>For every outgoing identity email, the system resolves the body in this order:</p>
+                <ol>
+                    <li><strong>Tenant override</strong> — a custom template saved for the recipient's tenant.</li>
+                    <li><strong>Global default</strong> — a platform-wide custom template (applies to all tenants without an override).</li>
+                    <li><strong>Built-in default</strong> — the hardcoded fallback; always available and cannot be deleted.</li>
+                </ol>
+
+                <h6 class="mt-4">Placeholder Reference</h6>
+                <p>
+                    Placeholders are replaced with real values when the email is sent. They use double-brace syntax
+                    and are <strong>case-sensitive</strong>.
+                </p>
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Token</th>
+                            <th>Required</th>
+                            <th>Applies To</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>{{VerificationLink}}</code></td>
+                            <td><span class="badge bg-danger">Required</span></td>
+                            <td>Verification Email</td>
+                            <td>One-click URL to verify the user's email address.</td>
+                        </tr>
+                        <tr>
+                            <td><code>{{TwoFactorCode}}</code></td>
+                            <td><span class="badge bg-danger">Required</span></td>
+                            <td>Two-Factor Email</td>
+                            <td>Short-lived numeric authentication code.</td>
+                        </tr>
+                        <tr>
+                            <td><code>{{PasswordResetLink}}</code></td>
+                            <td><span class="badge bg-danger">Required</span></td>
+                            <td>Password Reset Email</td>
+                            <td>URL the user clicks to navigate to the reset-password form. Expires in <strong>1 hour</strong>.</td>
+                        </tr>
+                        <tr>
+                            <td><code>{{InvitationLink}}</code></td>
+                            <td><span class="badge bg-danger">Required</span></td>
+                            <td>Invitation Email</td>
+                            <td>URL the recipient follows to accept the invitation.</td>
+                        </tr>
+                        <tr>
+                            <td><code>{{UserName}}</code></td>
+                            <td><span class="badge bg-secondary">Optional</span></td>
+                            <td>All types</td>
+                            <td>Recipient's display name.</td>
+                        </tr>
+                        <tr>
+                            <td><code>{{UserEmail}}</code></td>
+                            <td><span class="badge bg-secondary">Optional</span></td>
+                            <td>All types</td>
+                            <td>Recipient's email address.</td>
+                        </tr>
+                        <tr>
+                            <td><code>{{TenantName}}</code></td>
+                            <td><span class="badge bg-secondary">Optional</span></td>
+                            <td>All types</td>
+                            <td>Name of the tenant the user belongs to.</td>
+                        </tr>
+                        <tr>
+                            <td><code>{{CompanyName}}</code></td>
+                            <td><span class="badge bg-secondary">Optional</span></td>
+                            <td>All types</td>
+                            <td>Name of the active company.</td>
+                        </tr>
+                        <tr>
+                            <td><code>{{InviterName}}</code></td>
+                            <td><span class="badge bg-secondary">Optional</span></td>
+                            <td>Invitation Email</td>
+                            <td>Display name of the user who sent the invitation.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="alert alert-warning mt-3">
+                    <strong>Validation rules:</strong>
+                    <ul class="mb-0 mt-1">
+                        <li>A template body that omits the <strong>required placeholder</strong> for its type cannot be saved — the editor will show a validation error.</li>
+                        <li>Maximum template body length is <strong>65,536 characters</strong>.</li>
+                        <li>Unrecognized <code>{{…}}</code> tokens appear as <strong>warnings</strong> in the preview but do not block saving. They will appear literally (unreplaced) in sent emails.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        @* ── Password Reset Email ─────────────────────────────────────── *@
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Password Reset Email</h6>
+                <span class="badge bg-secondary">PasswordReset</span>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-3">
+                    <dt class="col-sm-3">Triggered when</dt>
+                    <dd class="col-sm-9">A user submits the <strong>Forgot Password</strong> form.</dd>
+
+                    <dt class="col-sm-3">Required placeholder</dt>
+                    <dd class="col-sm-9">
+                        <code>{{PasswordResetLink}}</code> — the URL the user must click to set a new password.
+                        The link <strong>expires in 1 hour</strong>. If the user does not act within that window,
+                        they must submit the Forgot Password form again.
+                    </dd>
+
+                    <dt class="col-sm-3">Optional placeholders</dt>
+                    <dd class="col-sm-9">
+                        <code>{{UserName}}</code>, <code>{{UserEmail}}</code>,
+                        <code>{{TenantName}}</code>, <code>{{CompanyName}}</code>
+                    </dd>
+
+                    <dt class="col-sm-3">Tenant resolution</dt>
+                    <dd class="col-sm-9">
+                        The template is resolved against the user's <em>primary tenant</em>
+                        (the oldest active membership). A tenant override — if present — takes precedence
+                        over the global default.
+                    </dd>
+                </dl>
+
+                <p class="text-muted mb-1"><strong>Built-in default body</strong> — copy this as a starting point:</p>
+                <pre class="border rounded p-3 bg-light" style="max-height:400px;overflow-y:auto;font-size:0.78rem;">@Model.PasswordResetDefaultBody</pre>
+            </div>
+        </div>
+
+        @* ── Verification Email ───────────────────────────────────────── *@
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Verification Email</h6>
+                <span class="badge bg-secondary">EmailVerification</span>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-3">
+                    <dt class="col-sm-3">Triggered when</dt>
+                    <dd class="col-sm-9">A new user registers or requests a new email verification link.</dd>
+
+                    <dt class="col-sm-3">Required placeholder</dt>
+                    <dd class="col-sm-9"><code>{{VerificationLink}}</code> — one-click URL to verify the user's email address.</dd>
+
+                    <dt class="col-sm-3">Optional placeholders</dt>
+                    <dd class="col-sm-9">
+                        <code>{{UserName}}</code>, <code>{{UserEmail}}</code>,
+                        <code>{{TenantName}}</code>, <code>{{CompanyName}}</code>
+                    </dd>
+                </dl>
+
+                <p class="text-muted mb-1"><strong>Built-in default body</strong> — copy this as a starting point:</p>
+                <pre class="border rounded p-3 bg-light" style="max-height:400px;overflow-y:auto;font-size:0.78rem;">@Model.EmailVerificationDefaultBody</pre>
+            </div>
+        </div>
+
+        @* ── Two-Factor Email ─────────────────────────────────────────── *@
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Two-Factor Email</h6>
+                <span class="badge bg-secondary">TwoFactor</span>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-3">
+                    <dt class="col-sm-3">Triggered when</dt>
+                    <dd class="col-sm-9">A user with email-based two-factor authentication signs in.</dd>
+
+                    <dt class="col-sm-3">Required placeholder</dt>
+                    <dd class="col-sm-9"><code>{{TwoFactorCode}}</code> — the short-lived numeric authentication code.</dd>
+
+                    <dt class="col-sm-3">Optional placeholders</dt>
+                    <dd class="col-sm-9">
+                        <code>{{UserName}}</code>, <code>{{UserEmail}}</code>,
+                        <code>{{TenantName}}</code>, <code>{{CompanyName}}</code>
+                    </dd>
+                </dl>
+
+                <p class="text-muted mb-1"><strong>Built-in default body</strong> — copy this as a starting point:</p>
+                <pre class="border rounded p-3 bg-light" style="max-height:400px;overflow-y:auto;font-size:0.78rem;">@Model.TwoFactorDefaultBody</pre>
+            </div>
+        </div>
+
+        @* ── Invitation Email ─────────────────────────────────────────── *@
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Invitation Email</h6>
+                <span class="badge bg-secondary">Invitation</span>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-3">
+                    <dt class="col-sm-3">Triggered when</dt>
+                    <dd class="col-sm-9">An admin invites a new user to a tenant or company.</dd>
+
+                    <dt class="col-sm-3">Required placeholder</dt>
+                    <dd class="col-sm-9"><code>{{InvitationLink}}</code> — the URL the recipient follows to accept the invitation.</dd>
+
+                    <dt class="col-sm-3">Optional placeholders</dt>
+                    <dd class="col-sm-9">
+                        <code>{{UserName}}</code>, <code>{{UserEmail}}</code>,
+                        <code>{{TenantName}}</code>, <code>{{CompanyName}}</code>,
+                        <code>{{InviterName}}</code>
+                    </dd>
+                </dl>
+
+                <p class="text-muted mb-1"><strong>Built-in default body</strong> — copy this as a starting point:</p>
+                <pre class="border rounded p-3 bg-light" style="max-height:400px;overflow-y:auto;font-size:0.78rem;">@Model.InvitationDefaultBody</pre>
+            </div>
+        </div>
+
+    </div>
+</div>
