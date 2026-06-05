@@ -34,6 +34,7 @@
                 <h5 class="mb-0">
                     @(Model.TenantId.HasValue ? $"{Model.TenantName} — Email Templates" : "Global Email Templates")
                 </h5>
+                <a asp-action="Guide" asp-controller="EmailTemplates" class="btn btn-outline-secondary btn-sm">View Guide</a>
             </div>
             <div class="card-body">
 

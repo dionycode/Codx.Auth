@@ -22,6 +22,7 @@
 13. [End-to-End Example: Setting Up Personnel Management](#13-end-to-end-example-setting-up-personnel-management)
 14. [SPA Integration Reference](#14-spa-integration-reference)
 15. [Troubleshooting: No Roles in Access Token](#15-troubleshooting-no-roles-in-access-token)
+16. [Section: Email Templates](#16-section-email-templates)
 
 ---
 
@@ -1126,3 +1127,218 @@ WHERE ApplicationId = 'personnel-management';
 | Token request rejected                   | Tenant or Company inactive                | Set Status to Active                                                                                                 |
 | 403 on API                               | Wrong `audience` in API's JWT validation  | Set `Audience = "personnel-management"` (matching `ApiResource.Name`)                                                |
 | 403 on `POST /user-roles`                | Caller lacks admin workspace role         | Token must contain `workspace_role: CompanyAdmin` or `TenantAdmin`                                                   |
+
+---
+
+## 16. Section: Email Templates
+
+**Route:** `/EmailTemplates`
+**Required Role:** `PlatformAdmin` (global templates) or `TenantOwner` / `TenantAdmin` (tenant-level overrides)
+
+### Purpose
+
+The **Email Templates** section lets administrators customise the HTML email bodies sent for identity events — email verification, two-factor authentication, password reset, and user invitations. If no custom template is configured, the system always falls back to a built-in hardcoded default.
+
+---
+
+### Template Resolution Order
+
+For every outgoing identity email, Codx.Auth evaluates templates in this priority order:
+
+```
+1. Tenant override    — A custom template stored for the specific tenant
+2. Global default     — A platform-wide custom template (applies to all tenants without an override)
+3. Built-in default   — Hardcoded fallback; always available and cannot be deleted
+```
+
+If step 1 is not found, the system moves to step 2. If step 2 is not found, it falls through to step 3. Step 3 always succeeds.
+
+---
+
+### Supported Template Types
+
+| Type                | Display Name         | Triggered When                                           | Required Placeholder    |
+| ------------------- | -------------------- | -------------------------------------------------------- | ----------------------- |
+| `EmailVerification` | Verification Email   | A new user registers or requests a new verification link | `{{VerificationLink}}`  |
+| `TwoFactor`         | Two-Factor Email     | A user with email-based 2FA signs in                     | `{{TwoFactorCode}}`     |
+| `PasswordReset`     | Password Reset Email | A user submits the "Forgot Password" form                | `{{PasswordResetLink}}` |
+| `Invitation`        | Invitation Email     | An admin invites a new user to a tenant or company       | `{{InvitationLink}}`    |
+
+---
+
+### Placeholder Reference
+
+Tokens are replaced with real values when the email is sent. Tokens are **case-sensitive** and use double-brace syntax.
+
+| Token                   | Required | Applies To        | Description                                                                        |
+| ----------------------- | -------- | ----------------- | ---------------------------------------------------------------------------------- |
+| `{{VerificationLink}}`  | **Yes**  | EmailVerification | One-click URL to verify the user's email address                                   |
+| `{{TwoFactorCode}}`     | **Yes**  | TwoFactor         | Short-lived numeric authentication code                                            |
+| `{{PasswordResetLink}}` | **Yes**  | PasswordReset     | URL the user clicks to navigate to the reset-password form. Expires in **1 hour**. |
+| `{{InvitationLink}}`    | **Yes**  | Invitation        | URL the recipient follows to accept the invitation                                 |
+| `{{UserName}}`          | No       | All types         | Recipient's display name                                                           |
+| `{{UserEmail}}`         | No       | All types         | Recipient's email address                                                          |
+| `{{TenantName}}`        | No       | All types         | Name of the tenant the user belongs to                                             |
+| `{{CompanyName}}`       | No       | All types         | Name of the active company                                                         |
+| `{{InviterName}}`       | No       | Invitation        | Display name of the user who sent the invitation                                   |
+
+> **Validation rule:** A template body that omits the required placeholder for its type **cannot be saved**. The editor displays a validation error identifying the missing token.
+
+> **Unrecognized tokens:** Any `{{…}}` token not in the known set is shown as a **warning** in the live preview but does not block saving. Unrecognized tokens are left unreplaced in the sent email (they appear literally).
+
+---
+
+### Password Reset Email — Detailed Guide
+
+The Password Reset Email is sent when a user submits the **Forgot Password** form. The system resolves the template for the user's primary tenant before sending.
+
+#### Required placeholder
+
+`{{PasswordResetLink}}` — the full URL pointing to the reset-password form with the user's encoded reset token embedded. The link **expires in 1 hour**. If the user does not act within that window, they must submit the Forgot Password form again to receive a new link.
+
+#### Optional placeholders
+
+`{{UserName}}`, `{{UserEmail}}`, `{{TenantName}}`, `{{CompanyName}}`
+
+#### Built-in default body
+
+The following is the raw HTML source of the built-in default. Copy it as a starting point for your custom template.
+
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Password Reset</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .header {
+        background-color: #dc3545;
+        color: white;
+        padding: 20px;
+        text-align: center;
+        border-radius: 5px 5px 0 0;
+      }
+      .content {
+        background-color: #f8f9fa;
+        padding: 30px;
+        border-radius: 0 0 5px 5px;
+      }
+      .button {
+        display: inline-block;
+        padding: 15px 30px;
+        background-color: #dc3545;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        margin: 20px 0;
+        font-weight: bold;
+      }
+      .warning {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 5px;
+        padding: 15px;
+        margin: 20px 0;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 30px;
+        font-size: 12px;
+        color: #6c757d;
+      }
+      .link {
+        word-break: break-all;
+        color: #dc3545;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>Password Reset Request</h1>
+    </div>
+    <div class="content">
+      <h2>Hello {{UserName}},</h2>
+      <p>
+        We received a request to reset the password for your account. Click the
+        button below to set a new password:
+      </p>
+
+      <div style="text-align: center;">
+        <a href="{{PasswordResetLink}}" class="button">Reset Password</a>
+      </div>
+
+      <div class="warning">
+        <strong>Important:</strong>
+        <ul>
+          <li>This link will expire in 1 hour</li>
+          <li>
+            If you did not request a password reset, please ignore this email
+            and your password will remain unchanged
+          </li>
+          <li>Do not share this link with anyone</li>
+        </ul>
+      </div>
+
+      <p>
+        If the button above doesn't work, copy and paste the following link into
+        your browser:
+      </p>
+      <p class="link">{{PasswordResetLink}}</p>
+
+      <p>Best regards,<br />Codx Auth Team</p>
+    </div>
+    <div class="footer">
+      <p>This is an automated message. Please do not reply to this email.</p>
+      <p>If you have any questions, please contact our support team.</p>
+    </div>
+  </body>
+</html>
+```
+
+> **Live preview note:** In the editor preview, `{{PasswordResetLink}}` is replaced with a sample URL and `{{UserName}}` with `"John Doe"`. The preview does not send an actual email.
+
+---
+
+### Step-by-Step: Customising the Global Password Reset Email (Platform Admin)
+
+1. Navigate to **Email Templates** (`/EmailTemplates`).
+2. Locate the **"Password Reset Email"** row. The **Source** column shows `Built-in` if no custom template has been configured yet.
+3. Click **Edit**.
+4. Replace the body with your HTML. Ensure `{{PasswordResetLink}}` is present.
+5. Optionally include `{{UserName}}`, `{{UserEmail}}`, `{{TenantName}}`, or `{{CompanyName}}`.
+6. Click **Preview** to see a rendered sample — warnings appear for any unrecognized tokens.
+7. Click **Save**. All password reset emails now use this body for tenants that have not set their own override. The Source column changes to `Custom`.
+8. To revert to the built-in default at any time, click **Reset** on the template list page.
+
+---
+
+### Step-by-Step: Customising the Tenant-Level Password Reset Email (Tenant Admin)
+
+1. Navigate to **Email Templates** with your tenant context: `/EmailTemplates?tenantId={yourTenantId}`.
+2. Locate the **"Password Reset Email"** row. The **Source** column shows `Global Default` (if the platform has a global template) or `Built-in` (if not).
+3. Click **Edit**, provide your custom HTML body (must include `{{PasswordResetLink}}`), and click **Save**.
+4. Users in your tenant will now receive your tenant-specific password reset email for all future password reset requests.
+5. To remove the override and fall back to the global (or built-in) default, click **Reset**.
+
+> **Isolation rule:** Tenant Admins can only manage templates for their own tenant. The `tenantId` query parameter must match the `tenant_id` claim in their JWT. A mismatch returns `403 Forbidden` regardless of any other claim.
+
+---
+
+### Email Templates Guide Page
+
+Navigate to `/EmailTemplates/Guide` (or click **View Guide** on the template list page) for:
+
+- A complete placeholder reference table for all four template types.
+- The three-level resolution order shown as a flowchart.
+- The raw HTML source of the built-in default body for each type, ready to copy.
+
+The guide page is accessible to any authenticated user — no admin role is required to read it.

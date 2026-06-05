@@ -21,6 +21,7 @@ namespace Codx.Auth.Controllers
     {
         private readonly IEmailTemplateService _templateService;
         private readonly UserDbContext _db;
+        private readonly BuiltInEmailTemplateProvider _builtIn;
 
         private static readonly Dictionary<string, string> TypeLabels = new()
         {
@@ -30,10 +31,11 @@ namespace Codx.Auth.Controllers
             ["Invitation"]        = "Invitation Email"
         };
 
-        public EmailTemplatesController(IEmailTemplateService templateService, UserDbContext db)
+        public EmailTemplatesController(IEmailTemplateService templateService, UserDbContext db, BuiltInEmailTemplateProvider builtIn)
         {
             _templateService = templateService;
             _db = db;
+            _builtIn = builtIn;
         }
 
         // GET /EmailTemplates           — Platform Admin (global)
@@ -268,6 +270,19 @@ namespace Codx.Auth.Controllers
 
             var result = _templateService.RenderPreview(templateType, body);
             return Json(new { rendered = result.Rendered, warnings = result.UnrecognizedPlaceholders });
+        }
+
+        // GET /EmailTemplates/Guide
+        [HttpGet("Guide")]
+        public IActionResult Guide()
+        {
+            return View(new EmailTemplateGuideViewModel
+            {
+                EmailVerificationDefaultBody = _builtIn.GetEmailVerificationBody("{{UserName}}", "{{VerificationLink}}"),
+                TwoFactorDefaultBody         = _builtIn.GetTwoFactorBody("{{UserName}}", "{{TwoFactorCode}}"),
+                PasswordResetDefaultBody     = _builtIn.GetPasswordResetBody("{{UserName}}", "{{PasswordResetLink}}"),
+                InvitationDefaultBody        = _builtIn.GetInvitationBody("{{UserName}}", "{{InviterName}}", "{{InvitationLink}}")
+            });
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────
