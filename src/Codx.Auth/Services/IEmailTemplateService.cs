@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Codx.Auth.Data.Entities.Enterprise;
+using Codx.Auth.Models.Responses;
 
 namespace Codx.Auth.Services
 {
@@ -22,6 +23,7 @@ namespace Codx.Auth.Services
         Task<EmailTemplate?> GetTenantTemplateAsync(EmailTemplateType type, Guid tenantId, CancellationToken ct = default);
         Task<EmailTemplate> UpsertTenantTemplateAsync(EmailTemplateType type, Guid tenantId, string body, Guid actorUserId, CancellationToken ct = default);
         Task DeleteTenantTemplateAsync(EmailTemplateType type, Guid tenantId, CancellationToken ct = default);
+        Task<IReadOnlyList<TenantEmailTemplateListItemResponse>> GetTenantTemplateListAsync(Guid tenantId, CancellationToken ct = default);
 
         PreviewResult RenderPreview(EmailTemplateType type, string body);
 

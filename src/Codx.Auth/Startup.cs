@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Authorization;
 using Duende.IdentityServer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.DataProtection;
@@ -151,6 +152,31 @@ namespace Codx.Auth
                     options.Cookie.IsEssential = true;
                     options.Cookie.HttpOnly = true;
                     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+                    options.Events = new CookieAuthenticationEvents
+                    {
+                        OnRedirectToLogin = context =>
+                        {
+                            if (IsApiRequest(context.Request.Path))
+                            {
+                                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                                return System.Threading.Tasks.Task.CompletedTask;
+                            }
+
+                            context.Response.Redirect(context.RedirectUri);
+                            return System.Threading.Tasks.Task.CompletedTask;
+                        },
+                        OnRedirectToAccessDenied = context =>
+                        {
+                            if (IsApiRequest(context.Request.Path))
+                            {
+                                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                                return System.Threading.Tasks.Task.CompletedTask;
+                            }
+
+                            context.Response.Redirect(context.RedirectUri);
+                            return System.Threading.Tasks.Task.CompletedTask;
+                        }
+                    };
                 });
 
             // Google Authentication
@@ -342,5 +368,9 @@ namespace Codx.Auth
                     pattern: "{controller=Home}/{action=Index}/{id?}");
             });
         }
+
+        private static bool IsApiRequest(PathString path) =>
+            path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWithSegments("/connect", StringComparison.OrdinalIgnoreCase);
     }
 }
