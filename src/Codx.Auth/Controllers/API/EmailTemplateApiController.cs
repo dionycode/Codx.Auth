@@ -1,5 +1,6 @@
 using Codx.Auth.Models;
 using Codx.Auth.Services;
+using Duende.IdentityServer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -9,6 +10,7 @@ using System.Threading.Tasks;
 namespace Codx.Auth.Controllers.API
 {
     [ApiController]
+    [Authorize(AuthenticationSchemes = IdentityServerConstants.LocalApi.AuthenticationScheme)]
     public class EmailTemplateApiController : ControllerBase
     {
         private readonly IEmailTemplateService _templateService;
@@ -161,6 +163,17 @@ namespace Codx.Auth.Controllers.API
 
             await _templateService.DeleteTenantTemplateAsync(templateType, tenantId, ct);
             return NoContent();
+        }
+
+        [HttpGet("api/v1/tenants/{tenantId}/email-templates")]
+        [Authorize(Policy = "TenantAdminRole")]
+        public async Task<IActionResult> GetTenantList(Guid tenantId, CancellationToken ct)
+        {
+            if (!IsPlatformAdmin() && !CallerOwnsTenant(tenantId))
+                return Forbid();
+
+            var templates = await _templateService.GetTenantTemplateListAsync(tenantId, ct);
+            return Ok(templates);
         }
 
         // ── Preview ──────────────────────────────────────────────────────────

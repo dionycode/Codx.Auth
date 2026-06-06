@@ -2,6 +2,7 @@ using Codx.Auth.Data.Contexts;
 using Codx.Auth.Data.Entities.Enterprise;
 using Codx.Auth.Infrastructure.Lifecycle;
 using Codx.Auth.Models;
+using Codx.Auth.Models.Responses;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -22,6 +23,26 @@ namespace Codx.Auth.Services
             [EmailTemplateType.TwoFactor]         = "{{TwoFactorCode}}",
             [EmailTemplateType.PasswordReset]     = "{{PasswordResetLink}}",
             [EmailTemplateType.Invitation]        = "{{InvitationLink}}"
+        };
+
+        private static readonly Dictionary<EmailTemplateType, EmailTypeMetadata> EmailTypeMetadataRegistry = new()
+        {
+            [EmailTemplateType.EmailVerification] = new EmailTypeMetadata(
+                "Verification Email",
+                "{{VerificationLink}}",
+                new List<string> { "{{VerificationLink}}", "{{UserName}}", "{{UserEmail}}", "{{TenantName}}", "{{CompanyName}}" }),
+            [EmailTemplateType.TwoFactor] = new EmailTypeMetadata(
+                "Two-Factor Email",
+                "{{TwoFactorCode}}",
+                new List<string> { "{{TwoFactorCode}}", "{{UserName}}", "{{UserEmail}}", "{{TenantName}}", "{{CompanyName}}" }),
+            [EmailTemplateType.PasswordReset] = new EmailTypeMetadata(
+                "Password Reset Email",
+                "{{PasswordResetLink}}",
+                new List<string> { "{{PasswordResetLink}}", "{{UserName}}", "{{UserEmail}}", "{{TenantName}}", "{{CompanyName}}" }),
+            [EmailTemplateType.Invitation] = new EmailTypeMetadata(
+                "Invitation Email",
+                "{{InvitationLink}}",
+                new List<string> { "{{InvitationLink}}", "{{InviterName}}", "{{UserName}}", "{{UserEmail}}", "{{TenantName}}", "{{CompanyName}}" }),
         };
 
         private readonly UserDbContext _context;
@@ -198,6 +219,63 @@ namespace Codx.Auth.Services
             await _context.SaveChangesAsync(ct);
         }
 
+        public async Task<IReadOnlyList<TenantEmailTemplateListItemResponse>> GetTenantTemplateListAsync(
+            Guid tenantId,
+            CancellationToken ct = default)
+        {
+            var tenantTemplates = await _context.EmailTemplates
+                .AsNoTracking()
+                .Where(t => t.TenantId == tenantId && t.Status == LifecycleStatus.EmailTemplate.Active)
+                .ToListAsync(ct);
+
+            var globalTemplates = await _context.EmailTemplates
+                .AsNoTracking()
+                .Where(t => t.TenantId == null && t.Status == LifecycleStatus.EmailTemplate.Active)
+                .ToListAsync(ct);
+
+            var tenantTypes = tenantTemplates
+                .Select(t => t.TemplateType)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var globalTypes = globalTemplates
+                .Select(t => t.TemplateType)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var allTypes = Enum.GetValues(typeof(EmailTemplateType))
+                .Cast<EmailTemplateType>()
+                .OrderBy(t => t.ToString())
+                .ToList();
+
+            var result = new List<TenantEmailTemplateListItemResponse>(allTypes.Count);
+
+            foreach (var type in allTypes)
+            {
+                var typeString = type.ToString();
+                var hasOverride = tenantTypes.Contains(typeString);
+                var hasGlobal = globalTypes.Contains(typeString);
+
+                var source = hasOverride
+                    ? "TenantOverride"
+                    : hasGlobal
+                        ? "GlobalDefault"
+                        : "BuiltInDefault";
+
+                var metadata = EmailTypeMetadataRegistry[type];
+
+                result.Add(new TenantEmailTemplateListItemResponse
+                {
+                    TemplateType = typeString,
+                    DisplayName = metadata.DisplayName,
+                    Source = source,
+                    HasOverride = hasOverride,
+                    RequiredPlaceholder = metadata.RequiredPlaceholder,
+                    AvailablePlaceholders = metadata.AvailablePlaceholders,
+                });
+            }
+
+            return result;
+        }
+
         // ── Preview ───────────────────────────────────────────────────────────
 
         public PreviewResult RenderPreview(EmailTemplateType type, string body)
@@ -268,6 +346,20 @@ namespace Codx.Auth.Services
             var errors = ValidateTemplate(type, body);
             if (errors.Count > 0)
                 throw new ArgumentException(string.Join(" ", errors), nameof(body));
+        }
+
+        private sealed class EmailTypeMetadata
+        {
+            public EmailTypeMetadata(string displayName, string requiredPlaceholder, List<string> availablePlaceholders)
+            {
+                DisplayName = displayName;
+                RequiredPlaceholder = requiredPlaceholder;
+                AvailablePlaceholders = availablePlaceholders;
+            }
+
+            public string DisplayName { get; }
+            public string RequiredPlaceholder { get; }
+            public List<string> AvailablePlaceholders { get; }
         }
     }
 }
