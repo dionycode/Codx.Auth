@@ -8,10 +8,10 @@
 
 :root {
   /* --- Primary brand color (buttons, card headers, links, active states) --- */
-  --theme-primary: #56c393;
-  --theme-primary-dark: #4a9f7b;
+  --theme-primary: #2563EB;
+  --theme-primary-dark: #1D4ED8;
   --theme-primary-rgb:
-    86, 195, 147; /* Used for rgba() focus rings — must match primary */
+    37, 99, 235; /* Used for rgba() focus rings — must match primary */
 
   /* --- Dark accent (navbar, dark surfaces) --- */
   --theme-accent: #0f172a;
@@ -28,23 +28,23 @@
   --theme-text-on-primary: #ffffff;
 
   /* --- Links --- */
-  --theme-link: #4a9f7b;
-  --theme-link-hover: #56c393;
+  --theme-link: #1D4ED8;
+  --theme-link-hover: #2563EB;
 
   /* --- Focus ring (input, button) --- */
-  --theme-focus-shadow: rgba(86, 195, 147, 0.25);
+  --theme-focus-shadow: rgba(37, 99, 235, 0.25);
 }
 
 /* ============================================================
    GLOBAL PAGE LEVEL
    ============================================================ */
 
-.theme-custom {
+.theme-blue-auth {
   background-color: var(--theme-background);
   color: var(--theme-text);
 }
 
-.theme-custom body {
+.theme-blue-auth body {
   background-color: var(--theme-background);
   color: var(--theme-text);
 }
@@ -63,107 +63,107 @@
 
 /* --- Force navbar to use theme primary color (green) --- */
 
-.theme-custom .navbar.bg-white,
-.theme-custom .navbar.bg-white.navbar-light {
+.theme-blue-auth .navbar.bg-white,
+.theme-blue-auth .navbar.bg-white.navbar-light {
   background-color: var(--theme-primary) !important;
 }
 
-.theme-custom .navbar {
+.theme-blue-auth .navbar {
   background-color: var(--theme-primary) !important;
   border-color: var(--theme-primary) !important;
 }
 
-.theme-custom .navbar-light {
+.theme-blue-auth .navbar-light {
   background-color: var(--theme-primary) !important;
 }
 
-.theme-custom .navbar-light .navbar-brand,
-.theme-custom .navbar-light .navbar-brand span,
-.theme-custom .navbar-light .nav-link,
-.theme-custom .navbar-light .nav-link.dropdown-toggle,
-.theme-custom .navbar .navbar-brand,
-.theme-custom .navbar .navbar-brand span,
-.theme-custom .navbar .nav-link,
-.theme-custom .navbar .nav-link.dropdown-toggle {
+.theme-blue-auth .navbar-light .navbar-brand,
+.theme-blue-auth .navbar-light .navbar-brand span,
+.theme-blue-auth .navbar-light .nav-link,
+.theme-blue-auth .navbar-light .nav-link.dropdown-toggle,
+.theme-blue-auth .navbar .navbar-brand,
+.theme-blue-auth .navbar .navbar-brand span,
+.theme-blue-auth .navbar .nav-link,
+.theme-blue-auth .navbar .nav-link.dropdown-toggle {
   color: var(--theme-text-on-primary) !important;
 }
 
-.theme-custom .navbar-light .nav-link:hover,
-.theme-custom .navbar-light .nav-link.dropdown-toggle:hover,
-.theme-custom .navbar .nav-link:hover,
-.theme-custom .navbar .nav-link.dropdown-toggle:hover {
+.theme-blue-auth .navbar-light .nav-link:hover,
+.theme-blue-auth .navbar-light .nav-link.dropdown-toggle:hover,
+.theme-blue-auth .navbar .nav-link:hover,
+.theme-blue-auth .navbar .nav-link.dropdown-toggle:hover {
   color: rgba(255, 255, 255, 0.8) !important;
 }
 
 /* --- Navbar text utilities override (AdminNavigation uses .text-dark) --- */
 
-.theme-custom .navbar .text-dark,
-.theme-custom .navbar-light .text-dark {
+.theme-blue-auth .navbar .text-dark,
+.theme-blue-auth .navbar-light .text-dark {
   color: var(--theme-text-on-primary) !important;
 }
 
 /* --- Navbar dropdown menu --- */
 
-.theme-custom .navbar .dropdown-menu,
-.theme-custom .navbar-light .dropdown-menu {
+.theme-blue-auth .navbar .dropdown-menu,
+.theme-blue-auth .navbar-light .dropdown-menu {
   background-color: var(--theme-surface);
   border-color: var(--theme-surface-border);
 }
 
-.theme-custom .navbar .dropdown-menu .dropdown-item,
-.theme-custom .navbar-light .dropdown-menu .dropdown-item {
+.theme-blue-auth .navbar .dropdown-menu .dropdown-item,
+.theme-blue-auth .navbar-light .dropdown-menu .dropdown-item {
   color: var(--theme-text);
 }
 
-.theme-custom .navbar .dropdown-menu .dropdown-item:hover,
-.theme-custom .navbar .dropdown-menu .dropdown-item:focus,
-.theme-custom .navbar-light .dropdown-menu .dropdown-item:hover,
-.theme-custom .navbar-light .dropdown-menu .dropdown-item:focus {
+.theme-blue-auth .navbar .dropdown-menu .dropdown-item:hover,
+.theme-blue-auth .navbar .dropdown-menu .dropdown-item:focus,
+.theme-blue-auth .navbar-light .dropdown-menu .dropdown-item:hover,
+.theme-blue-auth .navbar-light .dropdown-menu .dropdown-item:focus {
   background-color: var(--theme-background);
   color: var(--theme-primary);
 }
 
-.theme-custom .navbar .dropdown-divider,
-.theme-custom .navbar-light .dropdown-divider {
+.theme-blue-auth .navbar .dropdown-divider,
+.theme-blue-auth .navbar-light .dropdown-divider {
   border-color: var(--theme-surface-border);
 }
 
 /* --- Breadcrumbs --- */
 
-.theme-custom .breadcrumb {
+.theme-blue-auth .breadcrumb {
   background-color: transparent;
   padding-left: 0;
   padding-right: 0;
 }
 
-.theme-custom .breadcrumb-item a {
+.theme-blue-auth .breadcrumb-item a {
   color: var(--theme-link);
 }
 
-.theme-custom .breadcrumb-item a:hover {
+.theme-blue-auth .breadcrumb-item a:hover {
   color: var(--theme-link-hover);
 }
 
-.theme-custom .breadcrumb-item.active {
+.theme-blue-auth .breadcrumb-item.active {
   color: var(--theme-text-secondary);
 }
 
 /* --- Navigation Tabs --- */
 
-.theme-custom .nav-tabs {
+.theme-blue-auth .nav-tabs {
   border-bottom-color: var(--theme-surface-border);
 }
 
-.theme-custom .nav-tabs .nav-link {
+.theme-blue-auth .nav-tabs .nav-link {
   color: var(--theme-text-secondary);
 }
 
-.theme-custom .nav-tabs .nav-link:hover {
+.theme-blue-auth .nav-tabs .nav-link:hover {
   color: var(--theme-primary-dark);
   border-bottom-color: var(--theme-primary);
 }
 
-.theme-custom .nav-tabs .nav-link.active {
+.theme-blue-auth .nav-tabs .nav-link.active {
   color: var(--theme-primary);
   background-color: transparent;
   border-color: var(--theme-surface-border);
@@ -173,8 +173,8 @@
 
 /* --- Navigation Pills --- */
 
-.theme-custom .nav-pills .nav-link.active,
-.theme-custom .nav-pills .show > .nav-link {
+.theme-blue-auth .nav-pills .nav-link.active,
+.theme-blue-auth .nav-pills .show > .nav-link {
   background-color: var(--theme-primary);
   border-color: var(--theme-primary);
   color: var(--theme-text-on-primary);
@@ -184,7 +184,7 @@
    FOOTER
    ============================================================ */
 
-.theme-custom .footer {
+.theme-blue-auth .footer {
   background-color: var(--theme-surface);
   border-top-color: var(--theme-surface-border);
   color: var(--theme-text-secondary);
@@ -194,47 +194,47 @@
    CARDS & CONTAINERS
    ============================================================ */
 
-.theme-custom .card {
+.theme-blue-auth .card {
   border-color: var(--theme-surface-border);
   background-color: var(--theme-surface);
 }
 
-.theme-custom .card-header {
+.theme-blue-auth .card-header {
   background-color: var(--theme-primary);
   color: var(--theme-text-on-primary) !important;
   border-color: var(--theme-primary);
 }
 
-.theme-custom .card-header,
-.theme-custom .card-header * {
+.theme-blue-auth .card-header,
+.theme-blue-auth .card-header * {
   color: var(--theme-text-on-primary) !important;
 }
 
-.theme-custom .card-header h1,
-.theme-custom .card-header h2,
-.theme-custom .card-header h3,
-.theme-custom .card-header h4,
-.theme-custom .card-header h5,
-.theme-custom .card-header h6 {
+.theme-blue-auth .card-header h1,
+.theme-blue-auth .card-header h2,
+.theme-blue-auth .card-header h3,
+.theme-blue-auth .card-header h4,
+.theme-blue-auth .card-header h5,
+.theme-blue-auth .card-header h6 {
   color: var(--theme-text-on-primary) !important;
   margin: 0;
 }
 
-.theme-custom .card-header a {
+.theme-blue-auth .card-header a {
   color: var(--theme-text-on-primary) !important;
 }
 
-.theme-custom .card-header a:hover {
+.theme-blue-auth .card-header a:hover {
   color: #e2e8f0 !important;
   text-decoration: underline;
 }
 
-.theme-custom .card-body {
+.theme-blue-auth .card-body {
   background-color: var(--theme-surface);
   color: var(--theme-text);
 }
 
-.theme-custom .card-footer {
+.theme-blue-auth .card-footer {
   background-color: var(--theme-background);
   border-color: var(--theme-surface-border);
   color: var(--theme-text-secondary);
@@ -244,36 +244,36 @@
    BUTTONS — PRIMARY
    ============================================================ */
 
-.theme-custom .btn-primary {
+.theme-blue-auth .btn-primary {
   background-color: var(--theme-primary);
   border-color: var(--theme-primary);
   color: var(--theme-text-on-primary);
 }
 
-.theme-custom .btn-primary:hover {
+.theme-blue-auth .btn-primary:hover {
   background-color: var(--theme-primary-dark);
   border-color: var(--theme-primary-dark);
   color: var(--theme-text-on-primary);
 }
 
-.theme-custom .btn-primary:focus,
-.theme-custom .btn-primary.focus {
+.theme-blue-auth .btn-primary:focus,
+.theme-blue-auth .btn-primary.focus {
   background-color: var(--theme-primary-dark);
   border-color: var(--theme-primary-dark);
   color: var(--theme-text-on-primary);
   box-shadow: 0 0 0 0.2rem var(--theme-focus-shadow);
 }
 
-.theme-custom .btn-primary:active,
-.theme-custom .btn-primary.active,
-.theme-custom .btn-primary:not(:disabled):not(.disabled):active {
+.theme-blue-auth .btn-primary:active,
+.theme-blue-auth .btn-primary.active,
+.theme-blue-auth .btn-primary:not(:disabled):not(.disabled):active {
   background-color: var(--theme-primary-dark);
   border-color: var(--theme-primary-dark);
   color: var(--theme-text-on-primary);
 }
 
-.theme-custom .btn-primary:disabled,
-.theme-custom .btn-primary.disabled {
+.theme-blue-auth .btn-primary:disabled,
+.theme-blue-auth .btn-primary.disabled {
   background-color: var(--theme-primary);
   border-color: var(--theme-primary);
   opacity: 0.65;
@@ -281,26 +281,26 @@
 
 /* --- Outline Primary Buttons --- */
 
-.theme-custom .btn-outline-primary {
+.theme-blue-auth .btn-outline-primary {
   color: var(--theme-primary);
   border-color: var(--theme-primary);
 }
 
-.theme-custom .btn-outline-primary:hover {
+.theme-blue-auth .btn-outline-primary:hover {
   color: var(--theme-text-on-primary) !important;
   background-color: var(--theme-primary);
   border-color: var(--theme-primary);
 }
 
-.theme-custom .btn-outline-primary:focus,
-.theme-custom .btn-outline-primary.focus {
+.theme-blue-auth .btn-outline-primary:focus,
+.theme-blue-auth .btn-outline-primary.focus {
   box-shadow: 0 0 0 0.2rem var(--theme-focus-shadow);
   color: var(--theme-primary);
 }
 
-.theme-custom .btn-outline-primary:active,
-.theme-custom .btn-outline-primary.active,
-.theme-custom .btn-outline-primary:not(:disabled):not(.disabled):active {
+.theme-blue-auth .btn-outline-primary:active,
+.theme-blue-auth .btn-outline-primary.active,
+.theme-blue-auth .btn-outline-primary:not(:disabled):not(.disabled):active {
   color: var(--theme-text-on-primary);
   background-color: var(--theme-primary);
   border-color: var(--theme-primary);
@@ -308,24 +308,24 @@
 
 /* --- Outline Primary Buttons in Card Header (visible on green background) --- */
 
-.theme-custom .card-header .btn-outline-primary {
+.theme-blue-auth .card-header .btn-outline-primary {
   color: var(--theme-text-on-primary);
   border-color: var(--theme-text-on-primary);
 }
 
-.theme-custom .card-header .btn-outline-primary:hover {
+.theme-blue-auth .card-header .btn-outline-primary:hover {
   color: var(--theme-primary);
   background-color: var(--theme-text-on-primary);
   border-color: var(--theme-text-on-primary);
 }
 
-.theme-custom .card-header .btn-outline-primary:focus,
-.theme-custom .card-header .btn-outline-primary.focus {
+.theme-blue-auth .card-header .btn-outline-primary:focus,
+.theme-blue-auth .card-header .btn-outline-primary.focus {
   box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.35);
 }
 
-.theme-custom .card-header .btn-outline-primary:active,
-.theme-custom .card-header .btn-outline-primary.active {
+.theme-blue-auth .card-header .btn-outline-primary:active,
+.theme-blue-auth .card-header .btn-outline-primary.active {
   color: var(--theme-primary);
   background-color: var(--theme-text-on-primary);
   border-color: var(--theme-text-on-primary);
@@ -333,28 +333,28 @@
 
 /* --- Info Button (semantic info color for consistency) --- */
 
-.theme-custom .btn-info {
+.theme-blue-auth .btn-info {
   background-color: #0c5460;
   border-color: #0c5460;
   color: #ffffff !important;
 }
 
-.theme-custom .btn-info:hover {
+.theme-blue-auth .btn-info:hover {
   background-color: #084c5a;
   border-color: #084c5a;
   color: #ffffff !important;
 }
 
-.theme-custom .btn-info:focus,
-.theme-custom .btn-info.focus {
+.theme-blue-auth .btn-info:focus,
+.theme-blue-auth .btn-info.focus {
   background-color: #084c5a;
   border-color: #084c5a;
   color: #ffffff !important;
   box-shadow: 0 0 0 0.2rem rgba(12, 84, 96, 0.5);
 }
 
-.theme-custom .btn-info:active,
-.theme-custom .btn-info.active {
+.theme-blue-auth .btn-info:active,
+.theme-blue-auth .btn-info.active {
   background-color: #073840;
   border-color: #073840;
   color: #ffffff !important;
@@ -362,25 +362,25 @@
 
 /* --- Info Button in Card Header (visible on green background) --- */
 
-.theme-custom .card-header .btn-info {
+.theme-blue-auth .card-header .btn-info {
   background-color: var(--theme-text-on-primary);
   border-color: var(--theme-text-on-primary);
   color: #0c5460;
 }
 
-.theme-custom .card-header .btn-info:hover {
+.theme-blue-auth .card-header .btn-info:hover {
   background-color: transparent;
   border-color: var(--theme-text-on-primary);
   color: var(--theme-text-on-primary);
 }
 
-.theme-custom .card-header .btn-info:focus,
-.theme-custom .card-header .btn-info.focus {
+.theme-blue-auth .card-header .btn-info:focus,
+.theme-blue-auth .card-header .btn-info.focus {
   box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.35);
 }
 
-.theme-custom .card-header .btn-info:active,
-.theme-custom .card-header .btn-info.active {
+.theme-blue-auth .card-header .btn-info:active,
+.theme-blue-auth .card-header .btn-info.active {
   background-color: transparent;
   border-color: var(--theme-text-on-primary);
   color: var(--theme-text-on-primary);
@@ -388,24 +388,24 @@
 
 /* --- Outline Warning Button (Edit) --- */
 
-.theme-custom .btn-outline-warning {
+.theme-blue-auth .btn-outline-warning {
   color: #ffc107 !important;
   border-color: #ffc107;
 }
 
-.theme-custom .btn-outline-warning:hover {
+.theme-blue-auth .btn-outline-warning:hover {
   color: #212529 !important;
   background-color: #ffc107;
   border-color: #ffc107;
 }
 
-.theme-custom .btn-outline-warning:focus,
-.theme-custom .btn-outline-warning.focus {
+.theme-blue-auth .btn-outline-warning:focus,
+.theme-blue-auth .btn-outline-warning.focus {
   box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.5);
 }
 
-.theme-custom .btn-outline-warning:active,
-.theme-custom .btn-outline-warning.active {
+.theme-blue-auth .btn-outline-warning:active,
+.theme-blue-auth .btn-outline-warning.active {
   color: #212529 !important;
   background-color: #ffc107;
   border-color: #ffc107;
@@ -413,47 +413,47 @@
 
 /* --- Outline Danger Button (Delete) --- */
 
-.theme-custom .btn-outline-danger {
+.theme-blue-auth .btn-outline-danger {
   color: #dc3545 !important;
   border-color: #dc3545;
 }
 
-.theme-custom .btn-outline-danger:hover {
+.theme-blue-auth .btn-outline-danger:hover {
   color: #ffffff !important;
   background-color: #dc3545;
   border-color: #dc3545;
 }
 
-.theme-custom .btn-outline-danger:focus,
-.theme-custom .btn-outline-danger.focus {
+.theme-blue-auth .btn-outline-danger:focus,
+.theme-blue-auth .btn-outline-danger.focus {
   box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.5);
 }
 
-.theme-custom .btn-outline-danger:active,
-.theme-custom .btn-outline-danger.active {
+.theme-blue-auth .btn-outline-danger:active,
+.theme-blue-auth .btn-outline-danger.active {
   color: #ffffff !important;
   background-color: #dc3545;
   border-color: #dc3545;
 }
 
-.theme-custom .btn-outline-info {
+.theme-blue-auth .btn-outline-info {
   color: #17a2b8;
   border-color: #17a2b8;
 }
 
-.theme-custom .btn-outline-info:hover {
+.theme-blue-auth .btn-outline-info:hover {
   color: #ffffff;
   background-color: #17a2b8;
   border-color: #17a2b8;
 }
 
-.theme-custom .btn-outline-info:focus,
-.theme-custom .btn-outline-info.focus {
+.theme-blue-auth .btn-outline-info:focus,
+.theme-blue-auth .btn-outline-info.focus {
   box-shadow: 0 0 0 0.2rem rgba(23, 162, 184, 0.5);
 }
 
-.theme-custom .btn-outline-info:active,
-.theme-custom .btn-outline-info.active {
+.theme-blue-auth .btn-outline-info:active,
+.theme-blue-auth .btn-outline-info.active {
   color: #ffffff;
   background-color: #17a2b8;
   border-color: #17a2b8;
@@ -461,28 +461,28 @@
 
 /* --- Secondary Button --- */
 
-.theme-custom .btn-secondary {
+.theme-blue-auth .btn-secondary {
   background-color: #6c757d;
   border-color: #545b62;
   color: #ffffff !important;
 }
 
-.theme-custom .btn-secondary:hover {
+.theme-blue-auth .btn-secondary:hover {
   background-color: #5a6268;
   border-color: #4e555b;
   color: #ffffff !important;
 }
 
-.theme-custom .btn-secondary:focus,
-.theme-custom .btn-secondary.focus {
+.theme-blue-auth .btn-secondary:focus,
+.theme-blue-auth .btn-secondary.focus {
   background-color: #5a6268;
   border-color: #4e555b;
   color: #ffffff !important;
   box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.5);
 }
 
-.theme-custom .btn-secondary:active,
-.theme-custom .btn-secondary.active {
+.theme-blue-auth .btn-secondary:active,
+.theme-blue-auth .btn-secondary.active {
   background-color: #4e555b;
   border-color: #383d42;
   color: #ffffff !important;
@@ -490,25 +490,25 @@
 
 /* --- Secondary Button in Card Header (visible on green background) --- */
 
-.theme-custom .card-header .btn-secondary {
+.theme-blue-auth .card-header .btn-secondary {
   background-color: var(--theme-text-on-primary);
   border-color: var(--theme-text-on-primary);
   color: #6c757d;
 }
 
-.theme-custom .card-header .btn-secondary:hover {
+.theme-blue-auth .card-header .btn-secondary:hover {
   background-color: transparent;
   border-color: var(--theme-text-on-primary);
   color: var(--theme-text-on-primary);
 }
 
-.theme-custom .card-header .btn-secondary:focus,
-.theme-custom .card-header .btn-secondary.focus {
+.theme-blue-auth .card-header .btn-secondary:focus,
+.theme-blue-auth .card-header .btn-secondary.focus {
   box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.35);
 }
 
-.theme-custom .card-header .btn-secondary:active,
-.theme-custom .card-header .btn-secondary.active {
+.theme-blue-auth .card-header .btn-secondary:active,
+.theme-blue-auth .card-header .btn-secondary.active {
   background-color: transparent;
   border-color: var(--theme-text-on-primary);
   color: var(--theme-text-on-primary);
@@ -516,14 +516,14 @@
 
 /* --- Login Page Button --- */
 
-.theme-custom .btn-login {
+.theme-blue-auth .btn-login {
   background-color: var(--theme-primary);
   border-color: var(--theme-primary);
   width: 100%;
   color: var(--theme-text-on-primary);
 }
 
-.theme-custom .btn-login:hover {
+.theme-blue-auth .btn-login:hover {
   background-color: var(--theme-primary-dark);
   border-color: var(--theme-primary-dark);
   color: var(--theme-text-on-primary);
@@ -533,66 +533,66 @@
    FORMS — INPUTS, CHECKBOXES, VALIDATION
    ============================================================ */
 
-.theme-custom .form-control {
+.theme-blue-auth .form-control {
   border-color: var(--theme-surface-border);
   color: var(--theme-text);
 }
 
-.theme-custom .form-control:focus {
+.theme-blue-auth .form-control:focus {
   border-color: var(--theme-primary);
   color: var(--theme-text);
   box-shadow: 0 0 0 0.2rem var(--theme-focus-shadow);
 }
 
-.theme-custom .form-control::placeholder {
+.theme-blue-auth .form-control::placeholder {
   color: var(--theme-text-secondary);
   opacity: 0.7;
 }
 
 /* --- Checkboxes & Radio Buttons --- */
 
-.theme-custom .form-check-input {
+.theme-blue-auth .form-check-input {
   border-color: var(--theme-surface-border);
 }
 
-.theme-custom .form-check-input:focus {
+.theme-blue-auth .form-check-input:focus {
   border-color: var(--theme-primary);
   box-shadow: 0 0 0 0.2rem var(--theme-focus-shadow);
 }
 
-.theme-custom .form-check-input:checked {
+.theme-blue-auth .form-check-input:checked {
   background-color: var(--theme-primary);
   border-color: var(--theme-primary);
 }
 
 /* --- Form Validation --- */
 
-.theme-custom .is-invalid,
-.theme-custom .form-control.is-invalid {
+.theme-blue-auth .is-invalid,
+.theme-blue-auth .form-control.is-invalid {
   border-color: #dc3545;
 }
 
-.theme-custom .is-invalid:focus,
-.theme-custom .form-control.is-invalid:focus {
+.theme-blue-auth .is-invalid:focus,
+.theme-blue-auth .form-control.is-invalid:focus {
   border-color: #dc3545;
   box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
 }
 
-.theme-custom .is-valid,
-.theme-custom .form-control.is-valid {
+.theme-blue-auth .is-valid,
+.theme-blue-auth .form-control.is-valid {
   border-color: #28a745;
 }
 
-.theme-custom .is-valid:focus,
-.theme-custom .form-control.is-valid:focus {
+.theme-blue-auth .is-valid:focus,
+.theme-blue-auth .form-control.is-valid:focus {
   border-color: #28a745;
   box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
 }
 
 /* --- Form Labels --- */
 
-.theme-custom .form-label,
-.theme-custom label {
+.theme-blue-auth .form-label,
+.theme-blue-auth label {
   color: var(--theme-text);
   font-weight: 500;
 }
@@ -601,22 +601,22 @@
    LINKS
    ============================================================ */
 
-.theme-custom a {
+.theme-blue-auth a {
   color: var(--theme-link) !important;
   text-decoration: none;
 }
 
-.theme-custom a:hover {
+.theme-blue-auth a:hover {
   color: var(--theme-link-hover) !important;
   text-decoration: underline;
 }
 
-.theme-custom .register-link-small {
+.theme-blue-auth .register-link-small {
   font-size: 0.9em;
   color: var(--theme-link) !important;
 }
 
-.theme-custom .register-link-small:hover {
+.theme-blue-auth .register-link-small:hover {
   color: var(--theme-link-hover) !important;
 }
 
@@ -624,40 +624,40 @@
    ALERTS (SEMANTIC — mostly preserved, primary accent only)
    ============================================================ */
 
-.theme-custom .alert {
+.theme-blue-auth .alert {
   color: inherit;
   border-left: 4px solid transparent;
 }
 
-.theme-custom .alert-success {
+.theme-blue-auth .alert-success {
   background-color: #d4edda;
   border-color: #c3e6cb;
   color: #155724;
   border-left-color: #28a745;
 }
 
-.theme-custom .alert-danger {
+.theme-blue-auth .alert-danger {
   background-color: #f8d7da;
   border-color: #f5c6cb;
   color: #721c24;
   border-left-color: #dc3545;
 }
 
-.theme-custom .alert-warning {
+.theme-blue-auth .alert-warning {
   background-color: #fff3cd;
   border-color: #ffeeba;
   color: #856404;
   border-left-color: #ffc107;
 }
 
-.theme-custom .alert-info {
+.theme-blue-auth .alert-info {
   background-color: #d1ecf1;
   border-color: #bee5eb;
   color: #0c5460;
   border-left-color: var(--theme-primary);
 }
 
-.theme-custom .alert .close {
+.theme-blue-auth .alert .close {
   color: inherit;
 }
 
@@ -665,38 +665,38 @@
    TEXT UTILITIES (Bootstrap 4 utilities — require !important)
    ============================================================ */
 
-.theme-custom .text-primary {
+.theme-blue-auth .text-primary {
   color: var(--theme-primary) !important;
 }
 
-.theme-custom .text-secondary {
+.theme-blue-auth .text-secondary {
   color: var(--theme-text-secondary) !important;
 }
 
-.theme-custom .text-muted {
+.theme-blue-auth .text-muted {
   color: var(--theme-text-secondary) !important;
 }
 
-.theme-custom .text-dark {
+.theme-blue-auth .text-dark {
   color: var(--theme-text) !important;
 }
 
-.theme-custom .text-white {
+.theme-blue-auth .text-white {
   color: #ffffff !important;
 }
 
 /* --- General text color enforcement --- */
 
-.theme-custom .card-header .text-dark {
+.theme-blue-auth .card-header .text-dark {
   color: var(--theme-text-on-primary) !important;
 }
 
-.theme-custom .card-header .text-muted,
-.theme-custom .card-header .text-secondary {
+.theme-blue-auth .card-header .text-muted,
+.theme-blue-auth .card-header .text-secondary {
   color: rgba(255, 255, 255, 0.8) !important;
 }
 
-.theme-custom .card-header .text-primary {
+.theme-blue-auth .card-header .text-primary {
   color: var(--theme-text-on-primary) !important;
 }
 
@@ -704,15 +704,15 @@
    BACKGROUND UTILITIES (Bootstrap 4 utilities — require !important)
    ============================================================ */
 
-.theme-custom .bg-primary {
+.theme-blue-auth .bg-primary {
   background-color: var(--theme-primary) !important;
 }
 
-.theme-custom .bg-light {
+.theme-blue-auth .bg-light {
   background-color: var(--theme-background) !important;
 }
 
-.theme-custom .bg-white {
+.theme-blue-auth .bg-white {
   background-color: #ffffff !important;
 }
 
@@ -720,19 +720,19 @@
    BORDERS
    ============================================================ */
 
-.theme-custom .border {
+.theme-blue-auth .border {
   border-color: var(--theme-surface-border) !important;
 }
 
-.theme-custom .border-top {
+.theme-blue-auth .border-top {
   border-top-color: var(--theme-surface-border) !important;
 }
 
-.theme-custom .border-bottom {
+.theme-blue-auth .border-bottom {
   border-bottom-color: var(--theme-surface-border) !important;
 }
 
-.theme-custom .border-primary {
+.theme-blue-auth .border-primary {
   border-color: var(--theme-primary) !important;
 }
 
@@ -740,25 +740,25 @@
    TABLES
    ============================================================ */
 
-.theme-custom .table {
+.theme-blue-auth .table {
   color: var(--theme-text);
   border-color: var(--theme-surface-border);
 }
 
-.theme-custom .table-bordered {
+.theme-blue-auth .table-bordered {
   border-color: var(--theme-surface-border);
 }
 
-.theme-custom .table-bordered th,
-.theme-custom .table-bordered td {
+.theme-blue-auth .table-bordered th,
+.theme-blue-auth .table-bordered td {
   border-color: var(--theme-surface-border);
 }
 
-.theme-custom .table-hover tbody tr:hover {
-  background-color: rgba(86, 195, 147, 0.05);
+.theme-blue-auth .table-hover tbody tr:hover {
+  background-color: rgba(37, 99, 235, 0.05);
 }
 
-.theme-custom .table thead th {
+.theme-blue-auth .table thead th {
   background-color: var(--theme-background);
   color: var(--theme-text);
   border-color: var(--theme-surface-border);
@@ -768,17 +768,17 @@
    MISCELLANEOUS
    ============================================================ */
 
-.theme-custom .box-shadow {
+.theme-blue-auth .box-shadow {
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.05);
 }
 
-.theme-custom .btn-close {
+.theme-blue-auth .btn-close {
   background-color: transparent;
 }
 
 /* --- Login page specifics --- */
 
-.theme-custom .login_wrapper {
+.theme-blue-auth .login_wrapper {
   position: relative;
   z-index: 1;
   right: 0px;
@@ -787,7 +787,7 @@
   max-width: 500px;
 }
 
-.theme-custom .register_wrapper {
+.theme-blue-auth .register_wrapper {
   position: relative;
   z-index: 1;
   right: 0px;
@@ -796,13 +796,14 @@
   max-width: 900px;
 }
 
-.theme-custom .centered-title {
+.theme-blue-auth .centered-title {
   text-align: center;
   margin: 20px 0px 40px 0px;
   color: var(--theme-text);
 }
 
-.theme-custom .centered-title h2 {
+.theme-blue-auth .centered-title h2 {
   color: var(--theme-text);
   font-weight: 600;
 }
+
